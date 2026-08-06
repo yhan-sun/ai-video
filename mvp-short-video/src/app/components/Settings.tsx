@@ -485,12 +485,14 @@ export const BatchCheckPanel = ({
   selectedIndex,
   onSelectDraft,
   onApproveAllReady,
+  onCompare,
 }: {
   drafts: Timeline[];
   draftAnalyses: DraftAnalysis[];
   selectedIndex: number;
   onSelectDraft: (index: number) => void;
   onApproveAllReady: () => void;
+  onCompare: (index: number) => void;
 }) => (
   <div className="miniHeader">
     <div>
@@ -541,6 +543,16 @@ export const BatchCheckPanel = ({
                   ? analysis.blockingCount + " 项"
                   : "待审核"}
             </StatusBadge>
+            <button
+              type="button"
+              className="linkButton batchCompareButton"
+              onClick={(event) => {
+                event.stopPropagation();
+                onCompare(index);
+              }}
+            >
+              对比
+            </button>
           </button>
         );
       })}

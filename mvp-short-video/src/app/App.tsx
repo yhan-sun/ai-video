@@ -8,6 +8,7 @@ import { navGroups, type WorkspaceView } from "./types.ts";
 import { Sidebar } from "./components/Sidebar.tsx";
 import { Topbar, StatusStrip, MigrationNotice } from "./components/Topbar.tsx";
 import { DraftListPanel } from "./components/DraftList.tsx";
+import { DraftDiffPanel } from "./components/DraftDiff.tsx";
 import { DraftInspector } from "./components/Inspector.tsx";
 import { CheckListPanel } from "./components/CheckList.tsx";
 import { AssetLibraryPanel } from "./components/AssetLibrary.tsx";
@@ -22,6 +23,8 @@ export const App = () => {
   const [copiedCommand, setCopiedCommand] = useState<string | null>(null);
   const [forceExport, setForceExport] = useState(false);
   const [projects, setProjects] = useState<ProjectMeta[]>([]);
+  const [diffIndexA, setDiffIndexA] = useState(0);
+  const [diffIndexB, setDiffIndexB] = useState(1);
 
   const refreshProjects = useCallback(() => {
     void workspace.listProjects().then((list) => setProjects(list));
@@ -359,6 +362,11 @@ export const App = () => {
                   setActiveView("preview");
                 }}
                 onApproveAllReady={workspace.approveAllReadyDrafts}
+                onCompare={(index) => {
+                  setDiffIndexA(index);
+                  setDiffIndexB((index + 1) % drafts.length);
+                  setActiveView("diff");
+                }}
               />
             </article>
           </div>
@@ -523,6 +531,32 @@ export const App = () => {
               }
             }}
             onRemoveRenderJob={workspace.removeRenderJob}
+          />
+        );
+      case "diff":
+        return (
+          <DraftDiffPanel
+            drafts={drafts}
+            indexA={diffIndexA}
+            indexB={diffIndexB}
+            onSetA={(index) => setDiffIndexA(Math.min(index, drafts.length - 1))}
+            onSetB={(index) => setDiffIndexB(Math.min(index, drafts.length - 1))}
+            onGoToDraft={(index) => {
+              selectDraft(index);
+              setActiveView("preview");
+            }}
+            onToggleReview={() => {
+              const draft = drafts[diffIndexA];
+              if (draft?.draftId) {
+                workspace.toggleReviewForDraft(draft.draftId, draft);
+              }
+            }}
+            reviewStates={drafts.map((draft) => {
+              const edit = rawWorkspace.draftEdits[draft.draftId ?? ""];
+              return (edit?.reviewState ?? draft.reviewState) === "approved"
+                ? "approved"
+                : "pending";
+            })}
           />
         );
       default:

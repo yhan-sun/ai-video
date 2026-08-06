@@ -24,7 +24,8 @@
 - 本地持久化：浏览器 localStorage + IndexedDB 兼容 adapter；Tauri 桌面端统一走 SQLite（workspace / drafts / draft_versions / assets / asset_authorization / render_jobs / blobs / projects 表），迁移与保存失败均有可见反馈
 - Tauri 桌面端：Rust 后端全部文件/数据库操作为异步（tokio + spawn_blocking）——原生多选文件对话框、SHA-256 哈希去重、复制进本机素材库目录、磁盘存在性校验、保存对话框落盘、Remotion 渲染任务（进度日志事件流、可取消、错误与输出位置回传）；前端桥接层全部 async，浏览器环境自动降级
 - 无系统标题栏窗口：macOS 用 `titleBarStyle: Overlay` + `hiddenTitle`（去掉系统白色标题栏方框，保留原生红绿灯）+ `transparent`（`macOSPrivateApi`）透明窗口；其余平台运行时 `set_decorations(false)`；前端自绘全宽可拖拽 chrome 条（`data-tauri-drag-region`，非 macOS 提供最小化/最大化/关闭按钮与双击最大化），应用壳层圆角 + 阴影
-- 测试与工程：契约 / 生成器确定性 / 去重 / 行业模板 / 长度约束 / 审核失效 / 证据门禁 / 远程素材门禁 / LLM 修复循环 / 导出包 / Storyboard / 桌面桥接 / 组件 / 最小 Remotion 渲染 / Node smoke test（71 项）+ ESLint + Prettier + GitHub Actions CI
+- 差异对比与审校：新增"差异对比"视图——草稿 A/B 选择器、字段级分镜对比（画面大字/辅助文案/时长/素材，变化高亮并标注变化类型）、发布文案对比、时长/素材/审核状态摘要、"下一对"快速轮换、直接对 A 标记审核通过；审核清单每行可一键"对比"
+- 测试与工程：契约 / 生成器确定性 / 去重 / 行业模板 / 长度约束 / 审核失效 / 证据门禁 / 远程素材门禁 / LLM 修复循环 / 导出包 / Storyboard / 差异对比 / 桌面桥接 / 组件 / 最小 Remotion 渲染 / Node smoke test（103 项）+ ESLint + Prettier + GitHub Actions CI
 
 ## 快速开始
 
@@ -267,7 +268,7 @@ Web 操作台素材库可批量导入本地文件（计算 hash/尺寸/时长/�
 ## 下一步
 
 1. 更多行业模板与方言化文案。
-2. 草稿间批量差异对比与批量审校。
-3. 生产打包时把项目路径与 Remotion 依赖打包进桌面端。
-4. 项目快照升级为全量（含草稿编辑与版本）历史时间线。
-5. 字幕时间轴多素材叠加与波形预览。
+2. 生产打包时把项目路径与 Remotion 依赖打包进桌面端。
+3. 项目快照升级为全量（含草稿编辑与版本）历史时间线。
+4. 字幕时间轴多素材叠加与波形预览。
+5. 差异对比增强：三份以上草稿并列对比与合并。

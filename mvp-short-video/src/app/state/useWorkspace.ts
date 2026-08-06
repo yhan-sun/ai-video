@@ -766,6 +766,25 @@ export const useWorkspace = () => {
     });
   }, [selected, selectedDraftId, updateEdit]);
 
+  const toggleReviewForDraft = useCallback(
+    (draftId: string, timeline: Timeline) => {
+      updateEdit(draftId, (edit) => {
+        const nextReviewed = edit?.reviewState !== "approved";
+        const now = new Date().toISOString();
+        return {
+          ...(edit ?? {}),
+          updatedAt: now,
+          reviewState: nextReviewed ? "approved" : "pending",
+          reviewedAt: nextReviewed ? now : undefined,
+          approvedContentHash: nextReviewed ? timelineContentHash(timeline) : undefined,
+          approvedAt: nextReviewed ? now : undefined,
+          version: (edit?.version ?? 0) + 1,
+        };
+      });
+    },
+    [updateEdit],
+  );
+
   const approveAllReadyDrafts = useCallback(() => {
     setWorkspace((current) => {
       const nextEdits = { ...current.draftEdits };
@@ -2502,6 +2521,7 @@ export const useWorkspace = () => {
     redoSelectedEdit,
     canUndoSelected,
     canRedoSelected,
+    toggleReviewForDraft,
     approveAllReadyDrafts,
     llmGenerateBatch,
     llmOptimizeCurrent,

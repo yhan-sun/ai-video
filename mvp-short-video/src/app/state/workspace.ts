@@ -278,6 +278,7 @@ const workspaceViewValue = (value: unknown): WorkspaceView => {
     "assets",
     "rules",
     "export",
+    "diff",
   ];
 
   return typeof value === "string" && views.includes(value as WorkspaceView)

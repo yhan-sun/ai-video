@@ -28,7 +28,7 @@ export type {
 };
 
 export type WorkspaceView =
-  "drafts" | "preview" | "checks" | "aiEdit" | "merchant" | "assets" | "rules" | "export";
+  "drafts" | "preview" | "checks" | "aiEdit" | "merchant" | "assets" | "rules" | "export" | "diff";
 export type DraftStatusFilter = "all" | "edited" | "missing" | "ready" | "review";
 export type SortMode = "default" | "ready" | "duration-asc" | "duration-desc" | "title";
 export type AIEditMode = "pacing" | "story" | "conversion" | "asset";
@@ -259,6 +259,7 @@ export const navGroups: Array<{ label: string; items: NavItem[] }> = [
       { view: "merchant", icon: "06", label: "商家设置" },
       { view: "rules", icon: "07", label: "生成规则" },
       { view: "export", icon: "08", label: "导出" },
+      { view: "diff", icon: "09", label: "差异对比" },
     ],
   },
 ];

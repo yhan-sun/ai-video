@@ -2840,6 +2840,120 @@ button:disabled {
   font-size: 12px;
 }
 
+.diffSelectors {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.diffSelector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.diffSelector span {
+  color: var(--tertiary);
+  font-size: 12px;
+}
+
+.diffSelector select {
+  min-width: 220px;
+}
+
+.diffSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.diffSummaryGrid article {
+  padding: 10px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: var(--surface-1);
+}
+
+.diffSummaryGrid span {
+  display: block;
+  color: var(--tertiary);
+  font-size: 11px;
+}
+
+.diffSummaryGrid strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+.diffSummaryGrid small {
+  color: var(--tertiary);
+  font-size: 11px;
+}
+
+.diffPublish,
+.diffScenes {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.diffRow {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: baseline;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+
+.diffRow > span {
+  font-size: 12px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.diffFieldLabel {
+  color: var(--tertiary);
+  font-size: 11px !important;
+}
+
+.diffChanged {
+  color: var(--accent-press);
+  background: var(--accent-soft);
+  border-radius: 4px;
+  padding: 0 4px;
+}
+
+.diffScene {
+  padding: 10px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: var(--surface-1);
+}
+
+.diffScene.changed {
+  border-color: var(--accent-soft);
+}
+
+.diffSceneHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.diffSceneTags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 .shortcutHint {
   margin: 10px 2px 0;
   color: var(--tertiary);
