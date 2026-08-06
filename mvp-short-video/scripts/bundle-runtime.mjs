@@ -3,6 +3,7 @@
 // 只复制 Remotion 渲染所需的生产依赖树 + 源码，供 .app 开箱即用地在后台渲染视频。
 import fs from "node:fs";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -100,8 +101,20 @@ const main = () => {
     copyDir(binSource, path.join(nodeModulesDest, ".bin"));
   }
 
-  const size = fs.statSync(runtimeDir).size / 1024 / 1024;
-  console.log("运行时目录：", runtimeDir, "（" + size.toFixed(1) + " MB）");
+  // 预生成 Remotion bundle 打进 .app（只读资源，渲染直接复用，首次渲染零等待）。
+  console.log("预生成 Remotion bundle…");
+  const bundleResult = spawnSync(
+    "npx",
+    ["--no-install", "remotion", "bundle", "src/index.ts", "-o", "build"],
+    { cwd: runtimeDir, stdio: "inherit", shell: false },
+  );
+  if (bundleResult.status !== 0) {
+    console.error("预生成 bundle 失败（桌面端首次渲染将自动生成）。");
+  }
+
+  const size = spawnSync("du", ["-sk", runtimeDir], { encoding: "utf8" });
+  const kb = size.status === 0 ? Number(size.stdout.trim().split("\t")[0]) : 0;
+  console.log("运行时目录：", runtimeDir, "（" + (kb / 1024).toFixed(1) + " MB）");
 };
 
 main();

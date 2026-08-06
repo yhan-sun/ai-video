@@ -4,6 +4,7 @@ import { previewUrlFor } from "../desktop.ts";
 import {
   buildBilingualSrt,
   buildSrt,
+  buildSubtitlesPackage,
   buildVoiceOverScript,
   hydrateAssignments,
 } from "../subtitles.ts";
@@ -304,6 +305,27 @@ const MediaToolbar = ({
         <button type="button" className="linkButton" onClick={onRefresh}>
           重新检测
         </button>
+        {transcriptAssets.length > 0 ? (
+          <button
+            type="button"
+            className="linkButton"
+            onClick={() =>
+              onExportText(
+                "subtitles-package.txt",
+                buildSubtitlesPackage(
+                  transcriptAssets.map((item) => ({
+                    asset: item.path,
+                    language: item.transcript?.language,
+                    segments: item.transcript?.segments ?? [],
+                    translatedSegments: item.transcript?.translatedSegments,
+                  })),
+                ),
+              )
+            }
+          >
+            导出全部字幕包（{transcriptAssets.length} 个素材）
+          </button>
+        ) : null}
         {!toolsReady ? (
           <span className="assetValidationNote">
             安装方式：brew install ffmpeg whisper-cpp（转写还需下载模型，如 ggml-base.bin）

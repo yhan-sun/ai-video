@@ -756,6 +756,8 @@ export const App = () => {
                     onAutoFillMissingAssets={autoFillSelectedAssets}
                     onSaveVersion={saveCurrentVersion}
                     onRestoreVersion={restoreVersion}
+                    onUpdateSubtitleTrackStyle={workspace.updateSubtitleTrackStyle}
+                    onRemoveSubtitleTrack={workspace.removeSubtitleTrack}
                     onUpdatePublish={updateSelectedPublish}
                     onUpdateHashtags={updateSelectedHashtags}
                     onUpdateScene={updateSelectedScene}

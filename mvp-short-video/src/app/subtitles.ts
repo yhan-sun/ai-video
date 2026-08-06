@@ -300,3 +300,27 @@ export const currentSubtitleAt = (track: SubtitleTrack, seconds: number): Subtit
     ...(translated ? { translated: translated.text } : {}),
   };
 };
+
+export type SubtitlesPackageItem = {
+  asset: string;
+  language?: string;
+  segments: TranscriptSegment[];
+  translatedSegments?: TranscriptSegment[];
+};
+
+/** 汇总多个素材的字幕为字幕包（每素材一个 SRT，含双语时用双语 SRT）。 */
+export const buildSubtitlesPackage = (items: SubtitlesPackageItem[]): string =>
+  items
+    .map((item) => {
+      const body = item.translatedSegments?.length
+        ? buildBilingualSrt(item.segments, item.translatedSegments)
+        : buildSrt(item.segments);
+      return (
+        "===== " +
+        item.asset +
+        (item.language ? "（" + item.language + "）" : "") +
+        " =====\n" +
+        body
+      );
+    })
+    .join("\n\n");

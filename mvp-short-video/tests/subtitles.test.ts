@@ -5,6 +5,7 @@ import {
   buildBilingualSrt,
   buildSrt,
   buildSubtitleScenePatch,
+  buildSubtitlesPackage,
   buildVoiceOverScript,
   currentSubtitleAt,
   hydrateAssignments,
@@ -342,5 +343,20 @@ describe("srt building and subtitle track", () => {
     const applied = applyDraftEdit(draft, withReviewReset({ subtitleTrack: track }));
     expect(applied.subtitleTrack?.segments).toHaveLength(2);
     expect(applied.reviewState).toBe("pending");
+  });
+
+  it("builds a subtitles package across assets with bilingual preference", () => {
+    const pkg = buildSubtitlesPackage([
+      { asset: "clips/a.mp4", language: "zh", segments: transcript.segments.slice(0, 1) },
+      {
+        asset: "clips/b.mp4",
+        language: "zh",
+        segments: transcript.segments.slice(0, 1),
+        translatedSegments: [{ start: 0, end: 2.5, text: "First time in Dali" }],
+      },
+    ]);
+    expect(pkg).toContain("===== clips/a.mp4（zh） =====");
+    expect(pkg).toContain("===== clips/b.mp4（zh） =====");
+    expect(pkg).toContain("第一次来大理\nFirst time in Dali");
   });
 });

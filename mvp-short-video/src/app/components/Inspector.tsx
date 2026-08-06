@@ -454,6 +454,8 @@ export const DraftInspector = ({
   onAutoFillMissingAssets,
   onSaveVersion,
   onRestoreVersion,
+  onUpdateSubtitleTrackStyle,
+  onRemoveSubtitleTrack,
   onUpdatePublish,
   onUpdateHashtags,
   onUpdateScene,
@@ -485,6 +487,8 @@ export const DraftInspector = ({
   onAutoFillMissingAssets: () => void;
   onSaveVersion: () => void;
   onRestoreVersion: (version: SavedVersion) => void;
+  onUpdateSubtitleTrackStyle: (style: { size?: number; color?: string }) => void;
+  onRemoveSubtitleTrack: () => void;
   onUpdatePublish: (field: "title" | "body" | "commentPrompt", value: string) => void;
   onUpdateHashtags: (value: string) => void;
   onUpdateScene: (sceneId: string, patch: SceneEdit) => void;
@@ -560,6 +564,55 @@ export const DraftInspector = ({
       </div>
 
       <ExportGateNotice timeline={selected} analysis={analysis} edit={edit} compact />
+
+      {selected.subtitleTrack ? (
+        <section className="subtitleTrackPanel">
+          <div className="editorCardHeader">
+            <div>
+              <p className="eyebrow">字幕轨</p>
+              <h3>
+                {selected.subtitleTrack.segments.length} 段 ·{" "}
+                {selected.subtitleTrack.translatedSegments ? "双语" : "原文"}
+              </h3>
+            </div>
+            <button type="button" className="linkButton danger" onClick={onRemoveSubtitleTrack}>
+              移除字幕轨
+            </button>
+          </div>
+          <div className="subtitleStyleRow">
+            <Field label="字号">
+              <select
+                value={selected.subtitleTrack.size ?? 44}
+                onChange={(event) =>
+                  onUpdateSubtitleTrackStyle({ size: Number(event.target.value) })
+                }
+                aria-label="字幕字号"
+              >
+                <option value={36}>36（小）</option>
+                <option value={44}>44（默认）</option>
+                <option value={54}>54（大）</option>
+                <option value={64}>64（特大）</option>
+              </select>
+            </Field>
+            <div className="subtitleColorRow">
+              <span>颜色</span>
+              {["#ffffff", "#ffdd2d", "#4ade80", "#60a5fa"].map((color) => (
+                <button
+                  type="button"
+                  key={color}
+                  className={
+                    "subtitleColorSwatch" +
+                    ((selected.subtitleTrack?.color ?? "#ffffff") === color ? " active" : "")
+                  }
+                  style={{ background: color }}
+                  aria-label={"字幕颜色 " + color}
+                  onClick={() => onUpdateSubtitleTrackStyle({ color })}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <div className="quickActions">
         <button

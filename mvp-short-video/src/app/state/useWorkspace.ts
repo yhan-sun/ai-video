@@ -821,6 +821,22 @@ export const useWorkspace = () => {
     [selectedDraftId, setActiveView, setNotice, updateEdit, workspace.assetMeta],
   );
 
+  const updateSubtitleTrackStyle = useCallback(
+    (style: { size?: number; color?: string }) => {
+      updateEdit(selectedDraftId, (edit) => {
+        const track = edit?.subtitleTrack;
+        if (!track) {
+          return edit;
+        }
+        return withReviewReset({
+          ...(edit ?? {}),
+          subtitleTrack: { ...track, ...style },
+        });
+      });
+    },
+    [selectedDraftId, updateEdit],
+  );
+
   const removeSubtitleTrack = useCallback(() => {
     updateEdit(selectedDraftId, (edit) =>
       withReviewReset({ ...(edit ?? {}), subtitleTrack: undefined }),
@@ -2674,6 +2690,7 @@ export const useWorkspace = () => {
     saveTranscriptAssignments,
     attachSubtitleTrack,
     removeSubtitleTrack,
+    updateSubtitleTrackStyle,
     updateSelectedPublish,
     updateSelectedHashtags,
     updateSelectedScene,

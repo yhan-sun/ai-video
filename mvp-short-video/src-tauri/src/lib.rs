@@ -373,27 +373,49 @@ async fn run_render_job(
     let project_root = render_project_root(&app).await?;
     let npx = if cfg!(windows) { "npx.cmd" } else { "npx" };
 
-    // bundle 缓存写入可写目录（应用数据目录）：安装后资源目录只读，不能原地写 build。
-    let build_dir = app_data(&app)?.join("runtime-build");
-    if !build_dir.join("index.html").exists() {
-        let _ = app.emit(&event, serde_json::json!({"type": "log", "line": "首次运行：生成 Remotion bundle（后续渲染将复用缓存）…"}));
-        let mut bundle_command = tokio::process::Command::new(npx);
-        bundle_command
-            .current_dir(&project_root)
-            .arg("--no-install")
-            .arg("remotion")
-            .arg("bundle")
-            .arg("src/index.ts")
-            .arg("-o")
-            .arg(&build_dir);
-        let bundle_child =
-            spawn_media_job(&media_state, "render-bundle", &mut bundle_command).await?;
-        let bundle_ok =
-            stream_media_logs(&app, &event, bundle_child, &media_state, "render-bundle").await?;
-        if !bundle_ok {
-            return Err("生成 Remotion bundle 失败。".to_string());
+    // bundle 定位：优先复用已有的 bundle（开发项目 build / 打包进 .app 的 resources runtime/build，
+    // 只读即可渲染）；都没有时生成到可写的应用数据目录。
+    let bundled_root = project_root.join("build");
+    let build_dir = if bundled_root.join("index.html").exists() {
+        bundled_root
+    } else {
+        let resource_bundled = app
+            .path()
+            .resource_dir()
+            .map(|dir| dir.join("runtime").join("build"))
+            .unwrap_or_default();
+        if resource_bundled.join("index.html").exists() {
+            resource_bundled
+        } else {
+            let generated = app_data(&app)?.join("runtime-build");
+            if !generated.join("index.html").exists() {
+                let _ = app.emit(&event, serde_json::json!({"type": "log", "line": "首次运行：生成 Remotion bundle（后续渲染将复用缓存）…"}));
+                let mut bundle_command = tokio::process::Command::new(npx);
+                bundle_command
+                    .current_dir(&project_root)
+                    .arg("--no-install")
+                    .arg("remotion")
+                    .arg("bundle")
+                    .arg("src/index.ts")
+                    .arg("-o")
+                    .arg(&generated);
+                let bundle_child =
+                    spawn_media_job(&media_state, "render-bundle", &mut bundle_command).await?;
+                let bundle_ok = stream_media_logs(
+                    &app,
+                    &event,
+                    bundle_child,
+                    &media_state,
+                    "render-bundle",
+                )
+                .await?;
+                if !bundle_ok {
+                    return Err("生成 Remotion bundle 失败。".to_string());
+                }
+            }
+            generated
         }
-    }
+    };
 
     let mut command = tokio::process::Command::new(npx);
     command
