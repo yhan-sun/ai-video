@@ -295,12 +295,30 @@ async fn save_text_file(
     Ok(selected.to_str().map(String::from))
 }
 
+/// 渲染项目根目录：生产模式优先使用打包进 .app 的 runtime（含裁剪后的 node_modules），
+/// 开发模式回退到当前项目目录。
+async fn render_project_root(app: &AppHandle) -> Result<PathBuf, String> {
+    let resource_runtime = app
+        .path()
+        .resource_dir()
+        .map(|dir| dir.join("runtime"))
+        .unwrap_or_default();
+    if tokio::fs::try_exists(resource_runtime.join("package.json"))
+        .await
+        .unwrap_or(false)
+    {
+        return Ok(resource_runtime);
+    }
+    std::env::current_dir().map_err(|error| error.to_string())
+}
+
 /// 启动 Remotion 渲染任务（异步）：写 props、spawn npx remotion render，
 /// 进度日志通过 `render://<jobId>` 事件流式上报，支持取消。
 #[tauri::command]
 async fn run_render_job(
     app: AppHandle,
     state: State<'_, RenderState>,
+    media_state: State<'_, MediaState>,
     job: RenderJobInput,
 ) -> Result<String, String> {
     {
@@ -322,14 +340,38 @@ async fn run_render_job(
     .await
     .map_err(|error| "写入 props 失败：".to_string() + &error.to_string())?;
 
-    let project_root = std::env::current_dir().map_err(|error| error.to_string())?;
+    let project_root = render_project_root(&app).await?;
     let npx = if cfg!(windows) { "npx.cmd" } else { "npx" };
+
+    // bundle 缓存写入可写目录（应用数据目录）：安装后资源目录只读，不能原地写 build。
+    let build_dir = app_data(&app)?.join("runtime-build");
+    if !build_dir.join("index.html").exists() {
+        let _ = app.emit(&event, serde_json::json!({"type": "log", "line": "首次运行：生成 Remotion bundle（后续渲染将复用缓存）…"}));
+        let mut bundle_command = tokio::process::Command::new(npx);
+        bundle_command
+            .current_dir(&project_root)
+            .arg("--no-install")
+            .arg("remotion")
+            .arg("bundle")
+            .arg("src/index.ts")
+            .arg("-o")
+            .arg(&build_dir);
+        let bundle_child =
+            spawn_media_job(&media_state, "render-bundle", &mut bundle_command).await?;
+        let bundle_ok =
+            stream_media_logs(&app, &event, bundle_child, &media_state, "render-bundle").await?;
+        if !bundle_ok {
+            return Err("生成 Remotion bundle 失败。".to_string());
+        }
+    }
+
     let mut command = tokio::process::Command::new(npx);
     command
         .current_dir(&project_root)
+        .arg("--no-install")
         .arg("remotion")
         .arg("render")
-        .arg("src/index.ts")
+        .arg(&build_dir)
         .arg("VerticalDraft")
         .arg(&output_path)
         .arg(format!("--props={}", props_path.display()))
@@ -457,6 +499,18 @@ fn open_db(path: &Path) -> Result<rusqlite::Connection, String> {
          );",
     )
     .map_err(|error| "初始化数据库失败：".to_string() + &error.to_string())?;
+
+    // 迁移：旧版本 projects 表没有 full 列时补充（全量快照，含草稿编辑与历史）。
+    let has_full: bool = conn
+        .prepare("SELECT COUNT(*) FROM pragma_table_info('projects') WHERE name = 'full'")
+        .map_err(|error| error.to_string())?
+        .query_row([], |row| row.get::<_, i64>(0).map(|count| count > 0))
+        .unwrap_or(false);
+    if !has_full {
+        conn.execute_batch("ALTER TABLE projects ADD COLUMN full TEXT NULL")
+            .map_err(|error| "迁移 projects 表失败：".to_string() + &error.to_string())?;
+    }
+
     Ok(conn)
 }
 
@@ -494,6 +548,7 @@ struct ProjectData {
     tags: serde_json::Value,
     authorization: serde_json::Value,
     saved_at: String,
+    full: Option<serde_json::Value>,
 }
 
 /// 写入 kv 记录（workspace / drafts / draft_versions / assets / asset_authorization / render_jobs）。
@@ -606,7 +661,7 @@ async fn db_delete_blob(app: AppHandle, key: String) -> Result<(), String> {
     .await
 }
 
-/// 保存/更新一个商家项目（配置 + 规则 + 素材清单与标签/授权）。
+/// 保存/更新一个商家项目（配置 + 规则 + 素材清单与标签/授权；full 为可选全量快照）。
 #[tauri::command]
 async fn project_save(
     app: AppHandle,
@@ -618,11 +673,12 @@ async fn project_save(
     tags: serde_json::Value,
     authorization: serde_json::Value,
     saved_at: String,
+    full: Option<serde_json::Value>,
 ) -> Result<(), String> {
     with_db(&app, move |conn| {
         conn.execute(
-            "INSERT INTO projects (id, name, config, rules, assets_text, tags, authorization, saved_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+            "INSERT INTO projects (id, name, config, rules, assets_text, tags, authorization, saved_at, full)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
              ON CONFLICT(id) DO UPDATE SET
                name = excluded.name,
                config = excluded.config,
@@ -630,7 +686,8 @@ async fn project_save(
                assets_text = excluded.assets_text,
                tags = excluded.tags,
                authorization = excluded.authorization,
-               saved_at = excluded.saved_at",
+               saved_at = excluded.saved_at,
+               full = excluded.full",
             params![
                 project_id,
                 name,
@@ -639,7 +696,8 @@ async fn project_save(
                 assets_text,
                 tags.to_string(),
                 authorization.to_string(),
-                saved_at
+                saved_at,
+                full.map(|value| value.to_string())
             ],
         )
         .map_err(|error| error.to_string())?;
@@ -676,7 +734,7 @@ async fn project_load(app: AppHandle, id: String) -> Result<Option<ProjectData>,
     with_db(&app, move |conn| {
         let data = conn
             .query_row(
-                "SELECT id, name, config, rules, assets_text, tags, authorization, saved_at
+                "SELECT id, name, config, rules, assets_text, tags, authorization, saved_at, full
                  FROM projects WHERE id = ?1",
                 params![id],
                 |row| {
@@ -693,6 +751,9 @@ async fn project_load(app: AppHandle, id: String) -> Result<Option<ProjectData>,
                         authorization: serde_json::from_str(&row.get::<_, String>(6)?)
                             .unwrap_or(serde_json::json!({})),
                         saved_at: row.get(7)?,
+                        full: row
+                            .get::<_, Option<String>>(8)?
+                            .and_then(|text| serde_json::from_str(&text).ok()),
                     })
                 },
             )

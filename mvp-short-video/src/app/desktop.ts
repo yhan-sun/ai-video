@@ -135,6 +135,7 @@ export const projectSaveDesktop = async (project: ProjectData): Promise<void> =>
     tags: project.tags,
     authorization: project.authorization,
     savedAt: project.savedAt,
+    full: project.full ?? null,
   });
 };
 
@@ -235,6 +236,7 @@ export type ProjectData = {
   tags: unknown;
   authorization: unknown;
   savedAt: string;
+  full?: unknown;
 };
 
 // 本机绝对路径 → 可预览 URL 的运行时缓存（仅本机使用，绝不写入导出包）。

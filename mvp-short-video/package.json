@@ -11,6 +11,7 @@
     "generate": "node scripts/generate-campaign.mjs data/merchant.example.json data/sample.timeline.json",
     "generate:batch": "node scripts/generate-batch.mjs data/merchant.example.json data/campaigns",
     "storyboard": "node scripts/export-storyboard.mjs data/sample.timeline.json out/storyboard.html",
+    "bundle:runtime": "node scripts/bundle-runtime.mjs",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
     "tauri:check": "cargo check --manifest-path src-tauri/Cargo.toml",

@@ -2175,7 +2175,15 @@ export const useWorkspace = () => {
       authorization: workspace.assetAuthorization,
     });
     if (isDesktop()) {
-      void projectSaveDesktop(project)
+      const full = {
+        projectId: project.id,
+        draftEdits: workspace.draftEdits,
+        draftHistory: workspace.draftHistory,
+        assetMeta: workspace.assetMeta,
+        assetLocalPaths: workspace.assetLocalPaths,
+        draftVariants: workspace.draftVariants,
+      };
+      void projectSaveDesktop({ ...project, full })
         .then(() => {
           setNotice({ kind: "info", message: "项目已保存到本地数据库：" + project.name });
         })
@@ -2197,8 +2205,13 @@ export const useWorkspace = () => {
     generationRules,
     setNotice,
     workspace.assetAuthorization,
+    workspace.assetLocalPaths,
+    workspace.assetMeta,
     workspace.assetTags,
     workspace.assets,
+    workspace.draftEdits,
+    workspace.draftHistory,
+    workspace.draftVariants,
     workspace.name,
     workspace.projectId,
   ]);
@@ -2222,6 +2235,13 @@ export const useWorkspace = () => {
       const snapshot = project as ProjectData;
       const snapshotConfig = snapshot.config as MerchantConfig;
       const snapshotRules = snapshot.rules as GenerationRules;
+      const full = (snapshot.full ?? null) as {
+        draftEdits?: Record<string, DraftEdit>;
+        draftHistory?: Record<string, SavedVersion[]>;
+        assetMeta?: Record<string, AssetMeta>;
+        assetLocalPaths?: Record<string, string>;
+        draftVariants?: number[];
+      } | null;
       setWorkspace((current) => ({
         ...defaultWorkspace(),
         projectId: snapshot.id,
@@ -2240,6 +2260,8 @@ export const useWorkspace = () => {
         hashtags: (snapshotConfig.hashtags ?? []).join(" "),
         brandStyle: snapshotConfig.brandStyle ?? "",
         assets: snapshot.assetsText ?? "",
+        assetMeta: full?.assetMeta ?? {},
+        assetLocalPaths: full?.assetLocalPaths ?? {},
         generationCount: snapshotRules.count ?? 10,
         selectedTemplateIds: snapshotRules.templateIds ?? defaultGenerationRules.templateIds,
         tone: snapshotRules.tone ?? defaultGenerationRules.tone,
@@ -2248,15 +2270,25 @@ export const useWorkspace = () => {
         seed: snapshotRules.seed ?? 1,
         assetTags: (snapshot.tags ?? {}) as Record<string, AssetTag[]>,
         assetAuthorization: (snapshot.authorization ?? {}) as Record<string, AssetAuthorization>,
-        draftVariants: Array.from(
-          { length: snapshotRules.count ?? 10 },
-          (_, index) => (snapshotRules.seed ?? 1) * 1000 + index,
-        ),
+        draftVariants: full?.draftVariants ?? [
+          ...Array.from(
+            { length: snapshotRules.count ?? 10 },
+            (_, index) => (snapshotRules.seed ?? 1) * 1000 + index,
+          ),
+        ],
+        draftEdits: full?.draftEdits ?? {},
+        draftHistory: full?.draftHistory ?? {},
         selectedDraftId: "",
         activeView: current.activeView,
       }));
+      if (full?.assetLocalPaths) {
+        hydrateAssetLocalPaths(full.assetLocalPaths);
+      }
       setLastGenerated(nowLabel());
-      setNotice({ kind: "info", message: "已切换到项目：" + snapshot.name });
+      setNotice({
+        kind: "info",
+        message: "已切换到项目：" + snapshot.name + (full ? "（含草稿编辑与历史）" : "（配置级）"),
+      });
       setActiveView("drafts");
     },
     [setActiveView, setLastGenerated, setNotice],

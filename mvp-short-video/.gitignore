@@ -8,5 +8,6 @@ data/campaigns/*.json
 build/
 src-tauri/target/
 src-tauri/gen/
+src-tauri/resources/runtime/
 src-tauri/icons/icon.icns
 src-tauri/icons/icon.ico

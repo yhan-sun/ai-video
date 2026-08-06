@@ -20,7 +20,7 @@
 - 三栏工具界面：侧边栏 / 草稿列表 / 检查器；窄屏保留侧边栏与列表，检查器折叠为可关闭抽屉；键盘操作（⌘S 保存版本、⌘⏎ 审核、Esc 关闭、/ 聚焦搜索）、focus-visible、ARIA、破坏性操作确认
 - 视觉统一：`src/contract/tokens.ts` 共享视觉 token，Web Storyboard 与 Remotion `VerticalDraft` 共用布局规则；VerticalDraft 支持图片/视频裁切（objectFit/objectPosition）、视频 trim、播放速度、原声/背景音量、字幕安全区、长文案字号自适应、素材损坏占位和克制转场
 - 导出闭环：当前草稿 / 全部草稿 / 仅已审核草稿导出；导出包含 timeline + asset manifest + review metadata + schemaVersion + draft/unreviewed 状态；浏览器内生成 Storyboard（可见进度）；渲染任务记录（可见进度、日志、取消、错误原因、输出位置，配合 `scripts/render-job.mjs` 真实执行）
-- 项目历史：保存/切换/删除商家项目快照（配置 + 规则 + 素材清单与标签/授权），桌面端存入本地 SQLite（`clips-studio.db`，rusqlite bundled + spawn_blocking 异步），浏览器端存入 localStorage；首次使用自动把旧数据迁移进数据库
+- 项目历史：保存/切换/删除商家项目快照（配置 + 规则 + 素材清单与标签/授权 + 桌面端全量草稿编辑/历史/素材元数据），桌面端存入本地 SQLite（`clips-studio.db`，rusqlite bundled + spawn_blocking 异步，自动迁移旧表加列），浏览器端存入 localStorage（配置级）；首次使用自动把旧数据迁移进数据库
 - 本地持久化：浏览器 localStorage + IndexedDB 兼容 adapter；Tauri 桌面端统一走 SQLite（workspace / drafts / draft_versions / assets / asset_authorization / render_jobs / blobs / projects 表），迁移与保存失败均有可见反馈
 - Tauri 桌面端：Rust 后端全部文件/数据库操作为异步（tokio + spawn_blocking）——原生多选文件对话框、SHA-256 哈希去重、复制进本机素材库目录、磁盘存在性校验、保存对话框落盘、Remotion 渲染任务（进度日志事件流、可取消、错误与输出位置回传）；前端桥接层全部 async，浏览器环境自动降级
 - 无系统标题栏窗口：macOS 用 `titleBarStyle: Overlay` + `hiddenTitle`（去掉系统白色标题栏方框，保留原生红绿灯）+ `transparent`（`macOSPrivateApi`）透明窗口；其余平台运行时 `set_decorations(false)`；前端自绘全宽可拖拽 chrome 条（`data-tauri-drag-region`，非 macOS 提供最小化/最大化/关闭按钮与双击最大化），应用壳层圆角 + 阴影
@@ -187,8 +187,8 @@ Web 操作台素材库可批量导入本地文件（计算 hash/尺寸/时长/�
 - 素材导入：原生多选文件对话框 → Rust 异步计算 SHA-256 去重 → 复制进本机素材库目录（应用数据目录 `assets/`）→ 前端异步读取尺寸/时长/缩略图。导出始终只含 `library/<hash>-<name>` 相对路径，本机绝对路径只存在运行时缓存，绝不写入导出包
 - 文件校验：真实磁盘异步校验（素材库目录 + 项目 `public/` 目录），替代浏览器的 HTTP HEAD
 - 导出：JSON / Storyboard / 导出包通过原生保存对话框落盘（异步）
-- 渲染：任务在应用内启动 Remotion（`npx remotion render`），进度日志通过事件流实时显示、可取消、错误原因与输出位置（应用数据目录 `renders/<jobId>/vertical-draft.mp4`）回传界面
-- 渲染需要项目目录可执行 `npx`（开发模式下即项目根目录）；生产打包请保持项目可用或后续配置项目路径
+- 渲染：任务在应用内启动 Remotion（`npx --no-install remotion render`），进度日志通过事件流实时显示、可取消、错误原因与输出位置（应用数据目录 `renders/<jobId>/vertical-draft.mp4`）回传界面
+- 生产打包：`npm run tauri:build` 会先把渲染运行时（裁剪后的 node_modules + 源码，约 250MB）打进 .app，桌面端**开箱即用**——首次渲染自动生成 Remotion bundle 缓存到应用数据目录（资源目录只读，缓存写可写位置），无需项目目录与网络下载
 
 ## 媒体处理（FFmpeg / Whisper）
 
@@ -267,8 +267,7 @@ Web 操作台素材库可批量导入本地文件（计算 hash/尺寸/时长/�
 
 ## 下一步
 
-1. 更多行业模板与方言化文案。
-2. 生产打包时把项目路径与 Remotion 依赖打包进桌面端。
-3. 项目快照升级为全量（含草稿编辑与版本）历史时间线。
-4. 字幕时间轴多素材叠加与波形预览。
-5. 差异对比增强：三份以上草稿并列对比与合并。
+1. 字幕时间轴多素材叠加与波形预览。
+2. 差异对比增强：三份以上草稿并列对比与合并。
+3. 更多方言化文案与模板细分。
+4. 多语言字幕（Whisper 翻译）与自动口播稿。
