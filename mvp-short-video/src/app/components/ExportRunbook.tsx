@@ -33,6 +33,11 @@ export const ExportRunbook = ({
   onRunDesktopRender,
   onRunRenderQueue,
   renderQueueRunning,
+  renderQueueConcurrency,
+  onSetRenderQueueConcurrency,
+  onPauseRenderQueue,
+  onResumeRenderQueue,
+  onBuildReel,
   onCancelDesktopRender,
   onForceDownload,
   onDownloadCurrent,
@@ -64,6 +69,11 @@ export const ExportRunbook = ({
   onRunDesktopRender: (job: RenderJob) => void;
   onRunRenderQueue: () => void;
   renderQueueRunning: boolean;
+  renderQueueConcurrency: number;
+  onSetRenderQueueConcurrency: (value: number) => void;
+  onPauseRenderQueue: () => void;
+  onResumeRenderQueue: () => void;
+  onBuildReel: () => void;
   onCancelDesktopRender: () => void;
   onForceDownload: () => void;
   onDownloadCurrent: () => void;
@@ -349,14 +359,40 @@ export const ExportRunbook = ({
               {desktopMode ? "在桌面端渲染当前草稿" : "新建渲染任务"}
             </button>
             {desktopMode ? (
-              <button
-                type="button"
-                className="secondaryButton"
-                disabled={renderQueueRunning || !gate.ok}
-                onClick={onRunRenderQueue}
-              >
-                {renderQueueRunning ? "批量渲染中…" : "批量渲染已审核草稿"}
-              </button>
+              <>
+                <select
+                  value={renderQueueConcurrency}
+                  aria-label="批量渲染并发数"
+                  onChange={(event) =>
+                    onSetRenderQueueConcurrency(
+                      Math.max(1, Math.min(3, Number(event.target.value) || 1)),
+                    )
+                  }
+                >
+                  <option value={1}>并发 1</option>
+                  <option value={2}>并发 2</option>
+                  <option value={3}>并发 3</option>
+                </select>
+                <button
+                  type="button"
+                  className="secondaryButton"
+                  disabled={renderQueueRunning || !gate.ok}
+                  onClick={onRunRenderQueue}
+                >
+                  {renderQueueRunning ? "批量渲染中…" : "批量渲染已审核草稿"}
+                </button>
+                {renderQueueRunning ? (
+                  <button type="button" className="secondaryButton" onClick={onPauseRenderQueue}>
+                    暂停
+                  </button>
+                ) : null}
+                <button type="button" className="secondaryButton" onClick={onResumeRenderQueue}>
+                  恢复
+                </button>
+                <button type="button" className="secondaryButton" onClick={onBuildReel}>
+                  生成预览合辑
+                </button>
+              </>
             ) : null}
           </div>
         </div>

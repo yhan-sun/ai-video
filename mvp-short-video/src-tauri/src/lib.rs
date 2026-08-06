@@ -14,7 +14,7 @@ use std::collections::HashMap;
 
 #[derive(Default)]
 struct RenderState {
-    child: tokio::sync::Mutex<Option<tokio::process::Child>>,
+    jobs: tokio::sync::Mutex<HashMap<String, tokio::process::Child>>,
 }
 
 #[derive(Default)]
@@ -352,9 +352,9 @@ async fn run_render_job(
     job: RenderJobInput,
 ) -> Result<String, String> {
     {
-        let child_guard = state.child.lock().await;
-        if child_guard.is_some() {
-            return Err("已有渲染任务在运行，请先取消或等待完成。".to_string());
+        let jobs = state.jobs.lock().await;
+        if jobs.contains_key(&job.id) {
+            return Err("该渲染任务已在运行。".to_string());
         }
     }
 
@@ -401,14 +401,9 @@ async fn run_render_job(
                     .arg(&generated);
                 let bundle_child =
                     spawn_media_job(&media_state, "render-bundle", &mut bundle_command).await?;
-                let bundle_ok = stream_media_logs(
-                    &app,
-                    &event,
-                    bundle_child,
-                    &media_state,
-                    "render-bundle",
-                )
-                .await?;
+                let bundle_ok =
+                    stream_media_logs(&app, &event, bundle_child, &media_state, "render-bundle")
+                        .await?;
                 if !bundle_ok {
                     return Err("生成 Remotion bundle 失败。".to_string());
                 }
@@ -446,8 +441,8 @@ async fn run_render_job(
     let stderr = child.stderr.take().ok_or("无法读取渲染错误输出。")?;
 
     {
-        let mut child_guard = state.child.lock().await;
-        *child_guard = Some(child);
+        let mut jobs = state.jobs.lock().await;
+        jobs.insert(job.id.clone(), child);
     }
 
     let mut stdout_lines = BufReader::new(stdout).lines();
@@ -469,8 +464,8 @@ async fn run_render_job(
     }
 
     let status = {
-        let mut child_guard = state.child.lock().await;
-        match child_guard.take() {
+        let mut jobs = state.jobs.lock().await;
+        match jobs.remove(&job.id) {
             Some(mut running) => {
                 let status = running.wait().await.map_err(|error| error.to_string())?;
                 Some(status)
@@ -503,11 +498,11 @@ async fn run_render_job(
     }
 }
 
-/// 取消当前渲染任务（异步杀掉子进程）。
+/// 取消指定渲染任务（异步杀掉子进程）。
 #[tauri::command]
-async fn cancel_render_job(state: State<'_, RenderState>) -> Result<bool, String> {
-    let mut child_guard = state.child.lock().await;
-    if let Some(mut child) = child_guard.take() {
+async fn cancel_render_job(state: State<'_, RenderState>, job_id: String) -> Result<bool, String> {
+    let mut jobs = state.jobs.lock().await;
+    if let Some(mut child) = jobs.remove(&job_id) {
         let _ = child.kill().await;
         let _ = child.wait().await;
         Ok(true)
@@ -864,7 +859,8 @@ pub fn run() {
             media_slice,
             media_transcribe,
             media_cancel,
-            media_waveform
+            media_waveform,
+            media_concat
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -1364,6 +1360,68 @@ async fn media_cancel(state: State<'_, MediaState>, job_id: String) -> Result<bo
     } else {
         Ok(false)
     }
+}
+
+/// 拼接多个视频为预览合辑（ffmpeg concat demuxer，流复制不重编码）。
+#[tauri::command]
+async fn media_concat(
+    app: AppHandle,
+    state: State<'_, MediaState>,
+    job_id: String,
+    paths: Vec<String>,
+    output_name: String,
+) -> Result<String, String> {
+    let ffmpeg = detect_binary(&["ffmpeg"]);
+    let Some(ffmpeg) = ffmpeg else {
+        return Err("未检测到 ffmpeg，请先安装 FFmpeg。".to_string());
+    };
+    if paths.len() < 2 {
+        return Err("至少需要两个视频才能生成合辑。".to_string());
+    }
+
+    let event = format!("media://{job_id}");
+    let work_dir = app_data(&app)?.join("renders");
+    tokio::fs::create_dir_all(&work_dir)
+        .await
+        .map_err(|error| error.to_string())?;
+    let safe_name = safe_file_stem(&output_name);
+    let output_path = work_dir.join(format!("{safe_name}.mp4"));
+    let list_path = work_dir.join(format!("{safe_name}-concat.txt"));
+
+    let mut list = String::new();
+    for path in &paths {
+        if !tokio::fs::try_exists(path).await.unwrap_or(false) {
+            return Err(format!("合辑素材缺失：{path}"));
+        }
+        list.push_str(&format!("file '{}'\n", path.replace('\'', "'\\''")));
+    }
+    tokio::fs::write(&list_path, list)
+        .await
+        .map_err(|error| error.to_string())?;
+
+    let mut command = tokio::process::Command::new(&ffmpeg);
+    command
+        .arg("-y")
+        .arg("-f")
+        .arg("concat")
+        .arg("-safe")
+        .arg("0")
+        .arg("-i")
+        .arg(&list_path)
+        .arg("-c")
+        .arg("copy")
+        .arg(&output_path);
+    let child = spawn_media_job(&state, &job_id, &mut command).await?;
+    let ok = stream_media_logs(&app, &event, child, &state, &job_id).await?;
+    if !ok {
+        return Err("合辑拼接失败（ffmpeg 退出码非 0）。".to_string());
+    }
+
+    let _ = app.emit(
+        &event,
+        serde_json::json!({"type": "done", "output": output_path.to_string_lossy()}),
+    );
+    Ok(output_path.to_string_lossy().to_string())
 }
 
 /// 提取音频波形：ffmpeg 输出 4kHz 单声道 s16le，在 Rust 侧降采样为 160 个峰值桶，

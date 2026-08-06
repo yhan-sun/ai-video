@@ -59,6 +59,7 @@ import {
   importAssetFiles as desktopImportAssetFiles,
   isDesktop,
   mediaCancel,
+  mediaConcat,
   mediaProbe,
   mediaSlice,
   mediaTools,
@@ -2169,6 +2170,97 @@ export const useWorkspace = () => {
     [selected, setNotice],
   );
 
+  const buildPreviewReel = useCallback(
+    async (jobIds: string[]) => {
+      if (!isDesktop() || jobIds.length < 2) {
+        return null;
+      }
+      const paths: string[] = [];
+      setWorkspace((current) => {
+        jobIds.forEach((id) => {
+          const job = current.renderJobs.find((item) => item.id === id);
+          if (job?.status === "done" && job.outputPath) {
+            paths.push(job.outputPath);
+          }
+        });
+        return current;
+      });
+      if (paths.length < 2) {
+        return null;
+      }
+      const reelJobId = "reel-" + createId();
+      const unlisten = await onMediaEvent(reelJobId, () => undefined);
+      try {
+        const output = await mediaConcat({
+          id: reelJobId,
+          paths,
+          outputName: "preview-reel-" + nowLabel().replace(/[:\s]/g, "-"),
+        });
+        setNotice({
+          kind: "info",
+          message: "预览合辑已生成（" + paths.length + " 条视频拼接）：" + output,
+        });
+        return output;
+      } catch (error) {
+        setNotice({
+          kind: "failed",
+          message: "预览合辑生成失败：" + (error instanceof Error ? error.message : String(error)),
+        });
+        return null;
+      } finally {
+        unlisten();
+      }
+    },
+    [setNotice],
+  );
+
+  const buildReelFromFinished = useCallback(() => {
+    const done = workspace.renderJobs
+      .filter((job) => job.status === "done" && job.outputPath)
+      .map((job) => job.id);
+    if (done.length < 2) {
+      setNotice({ kind: "info", message: "至少需要 2 条已完成渲染的任务才能生成合辑。" });
+      return;
+    }
+    void buildPreviewReel(done);
+  }, [buildPreviewReel, setNotice, workspace.renderJobs]);
+
+  const cancelDesktopRenderJob = useCallback(
+    async (jobId?: string) => {
+      const cancelled = await desktopCancelRenderJob(jobId);
+      if (cancelled) {
+        setNotice({ kind: "info", message: "已发送取消指令，渲染进程正在退出。" });
+      }
+      return cancelled;
+    },
+    [setNotice],
+  );
+
+  const [renderQueueConcurrency, setRenderQueueConcurrency] = useState(1);
+  const renderQueuePausedRef = useRef(false);
+  const resumeRenderQueueRef = useRef<(() => void) | null>(null);
+
+  const pauseRenderQueue = useCallback(() => {
+    renderQueuePausedRef.current = true;
+    setNotice({ kind: "info", message: "渲染队列已暂停，当前批次完成后停止。" });
+  }, [setNotice]);
+
+  const resumeRenderQueue = useCallback(() => {
+    renderQueuePausedRef.current = false;
+    resumeRenderQueueRef.current?.();
+    resumeRenderQueueRef.current = null;
+    setNotice({ kind: "info", message: "渲染队列已恢复。" });
+  }, [setNotice]);
+
+  const waitIfPaused = useCallback(async () => {
+    if (!renderQueuePausedRef.current) {
+      return;
+    }
+    await new Promise<void>((resolve) => {
+      resumeRenderQueueRef.current = resolve;
+    });
+  }, []);
+
   const runRenderQueue = useCallback(async () => {
     if (!isDesktop()) {
       setNotice({ kind: "failed", message: "桌面渲染仅在使用 Tauri 桌面端时可用。" });
@@ -2206,15 +2298,26 @@ export const useWorkspace = () => {
     renderQueueRunningRef.current = true;
     setNotice({
       kind: "info",
-      message: "开始批量渲染 " + jobs.length + " 条已审核草稿（串行队列）。",
+      message:
+        "开始批量渲染 " + jobs.length + " 条已审核草稿（并发 " + renderQueueConcurrency + "）。",
     });
 
     let failed = 0;
-    for (const job of jobs) {
-      const ok = await runDesktopRenderJob(job, { silent: true });
-      if (!ok) {
-        failed += 1;
-      }
+    const succeeded: string[] = [];
+    const batchSize = Math.max(1, renderQueueConcurrency);
+    for (let start = 0; start < jobs.length; start += batchSize) {
+      await waitIfPaused();
+      const batch = jobs.slice(start, start + batchSize);
+      const results = await Promise.all(
+        batch.map(async (job) => {
+          const ok = await runDesktopRenderJob(job, { silent: true });
+          if (ok) {
+            succeeded.push(job.id);
+          }
+          return ok;
+        }),
+      );
+      failed += results.filter((ok) => !ok).length;
     }
 
     renderQueueRunningRef.current = false;
@@ -2228,15 +2331,19 @@ export const useWorkspace = () => {
         (failed > 0 ? "，" + failed + " 条失败（详见任务日志）" : "") +
         "。",
     });
-  }, [drafts, runDesktopRenderJob, setNotice, workspace.draftEdits]);
 
-  const cancelDesktopRenderJob = useCallback(async () => {
-    const cancelled = await desktopCancelRenderJob();
-    if (cancelled) {
-      setNotice({ kind: "info", message: "已发送取消指令，渲染进程正在退出。" });
+    if (succeeded.length >= 2) {
+      await buildPreviewReel(succeeded);
     }
-    return cancelled;
-  }, [setNotice]);
+  }, [
+    buildPreviewReel,
+    drafts,
+    renderQueueConcurrency,
+    runDesktopRenderJob,
+    setNotice,
+    waitIfPaused,
+    workspace.draftEdits,
+  ]);
 
   const removeRenderJob = useCallback((jobId: string) => {
     setWorkspace((current) => ({
@@ -2744,6 +2851,11 @@ export const useWorkspace = () => {
     runDesktopRenderJob,
     runRenderQueue,
     renderQueueRunning,
+    renderQueueConcurrency,
+    setRenderQueueConcurrency,
+    pauseRenderQueue,
+    resumeRenderQueue,
+    buildReelFromFinished,
     cancelDesktopRenderJob,
     removeRenderJob,
     mediaToolsInfo,

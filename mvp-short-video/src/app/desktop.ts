@@ -82,9 +82,20 @@ export const runRenderJob = async (job: DesktopRenderJobInput): Promise<string> 
   return output;
 };
 
-export const cancelRenderJob = async (): Promise<boolean> => {
-  const cancelled = await invoke<boolean>("cancel_render_job");
-  return cancelled;
+export const cancelRenderJob = async (jobId?: string): Promise<boolean> => {
+  return invoke("cancel_render_job", { jobId: jobId ?? "" });
+};
+
+export const mediaConcat = async (job: {
+  id: string;
+  paths: string[];
+  outputName: string;
+}): Promise<string> => {
+  return invoke("media_concat", {
+    jobId: job.id,
+    paths: job.paths,
+    outputName: job.outputName,
+  });
 };
 
 export const onRenderEvent = async (

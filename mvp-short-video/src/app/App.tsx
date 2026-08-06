@@ -574,6 +574,11 @@ export const App = () => {
             onRunDesktopRender={(job) => void workspace.runDesktopRenderJob(job)}
             onRunRenderQueue={() => void workspace.runRenderQueue()}
             renderQueueRunning={workspace.renderQueueRunning}
+            renderQueueConcurrency={workspace.renderQueueConcurrency}
+            onSetRenderQueueConcurrency={workspace.setRenderQueueConcurrency}
+            onPauseRenderQueue={workspace.pauseRenderQueue}
+            onResumeRenderQueue={workspace.resumeRenderQueue}
+            onBuildReel={workspace.buildReelFromFinished}
             onCancelDesktopRender={() => void workspace.cancelDesktopRenderJob()}
             onNewRenderJob={() => {
               if (
