@@ -17,7 +17,7 @@
 - 生成质量：确定性 seed、相似度指纹去重（10 条草稿在钩子/痛点/证据/CTA 上差异明显）、行业模板（民宿/餐饮/农产品/探店/培训/本地服务/美业/宠物/母婴亲子 9 类）、每模板 4 个钩子变体轮换、按区域注入方言称呼（街坊/老师/老铁/伙计/朋友等 7 区）、文案长度约束（标题 ≤34、画面大字 ≤32、正文 ≤200）
 - LLM Provider（可替换）：OpenAI 兼容接口，只输出经共享 Zod schema 校验的 `DraftProposal`；记录 model、promptVersion、输入 hash、生成时间与有限次 schema repair；不生成剪辑代码，不虚构价格/优惠/销量/评价/距离/效果，证据不足标记 `needsHumanEvidence`；本地规则生成器作为离线 fallback
 - 编辑体验：标题、正文、CTA、标签、分镜类型/文案/时长/顺序/素材直接编辑；字段锁定、撤销/重做（⌘Z/⇧⌘Z）、自动保存、版本历史与恢复、批量审核、AI 建议逐项应用
-- 三栏工具界面：侧边栏 / 草稿列表 / 检查器；窄屏保留侧边栏与列表，检查器折叠为可关闭抽屉；键盘操作（⌘S 保存版本、⌘⏎ 审核、Esc 关闭、/ 聚焦搜索）、focus-visible、ARIA、破坏性操作确认
+- 三栏工具界面：侧边栏 / 草稿列表 / 检查器；Apple HIG 桌面工具质感（设计系统 v2：修复语义色变量缺失、按钮体系主操作蓝/次级中性、徽章收敛为低对比 pill、顶栏 52px 紧凑、草稿行精简为 2 个徽章、检查器头部单状态徽章）；窄屏保留侧边栏与列表，检查器折叠为可关闭抽屉；键盘操作（⌘S 保存版本、⌘⏎ 审核、Esc 关闭、/ 聚焦搜索）、focus-visible、ARIA、破坏性操作确认
 - 视觉统一：`src/contract/tokens.ts` 共享视觉 token，Web Storyboard 与 Remotion `VerticalDraft` 共用布局规则；VerticalDraft 支持图片/视频裁切（objectFit/objectPosition）、视频 trim、播放速度、原声/背景音量、字幕安全区、长文案字号自适应、素材损坏占位和克制转场
 - 导出闭环：当前草稿 / 全部草稿 / 仅已审核草稿导出；导出包含 timeline + asset manifest + review metadata + schemaVersion + draft/unreviewed 状态；浏览器内生成 Storyboard（可见进度）；渲染任务记录（可见进度、日志、取消、错误原因、输出位置，配合 `scripts/render-job.mjs` 真实执行）
 - 项目历史：保存/切换/删除商家项目快照（配置 + 规则 + 素材清单与标签/授权 + 桌面端全量草稿编辑/历史/素材元数据），桌面端存入本地 SQLite（`clips-studio.db`，rusqlite bundled + spawn_blocking 异步，自动迁移旧表加列），浏览器端存入 localStorage（配置级）；首次使用自动把旧数据迁移进数据库

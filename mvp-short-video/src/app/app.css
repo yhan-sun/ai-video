@@ -3133,3 +3133,474 @@ button:disabled {
     display: inline-grid;
   }
 }
+
+/* ============================================================
+   设计系统 v2（Apple HIG 桌面工具感）
+   修复：语义色变量缺失、按钮全蓝、密度偏高、徽章泛滥
+   ============================================================ */
+
+:root {
+  /* 语义色补全（此前缺失导致颜色失效） */
+  --success: #1f8f4d;
+  --success-soft: rgba(52, 199, 89, 0.14);
+  --warning: #a05a00;
+  --warning-soft: rgba(255, 149, 0, 0.16);
+  --danger: #c9342f;
+  --danger-soft: rgba(255, 59, 48, 0.12);
+  --accent-strong: #006edb;
+  --surface-1: #ffffff;
+  --surface-2: rgba(118, 118, 128, 0.1);
+  --hairline: rgba(60, 60, 67, 0.12);
+  --radius: 10px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+}
+
+/* 基础排版：更细的字重层级与行高 */
+body {
+  font-size: 13px;
+  line-height: 1.4;
+  letter-spacing: 0.002em;
+}
+
+h1 {
+  font-size: 16px;
+  font-weight: 650;
+}
+
+h2 {
+  font-size: 16px;
+  font-weight: 650;
+}
+
+h3 {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+/* 按钮体系：主操作蓝色，次级按钮中性（不再全蓝） */
+.primaryButton {
+  background: var(--accent);
+  color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 122, 255, 0.24);
+}
+
+.primaryButton:hover {
+  background: #0071eb;
+}
+
+.secondaryButton {
+  background: var(--fill);
+  color: var(--label);
+  border-radius: 8px;
+  border: 0;
+}
+
+.secondaryButton:hover {
+  background: var(--fill-hover);
+  color: var(--label);
+}
+
+.linkButton {
+  color: var(--accent);
+  background: transparent;
+}
+
+.linkButton:hover {
+  background: var(--accent-soft);
+  color: var(--accent-press);
+}
+
+/* 危险文字操作 */
+.linkButton.danger,
+.mergeButton.danger {
+  color: var(--danger);
+}
+
+/* 徽章：中性为灰、语义色淡底，尺寸收敛 */
+.statusBadge {
+  min-height: 18px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--fill);
+  color: var(--secondary);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.statusBadge::before {
+  width: 5px;
+  height: 5px;
+}
+
+.statusBadge.success {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.statusBadge.warning {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.statusBadge.danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.statusBadge.info {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* 顶栏紧凑：52px、次要元素收敛 */
+.topbar {
+  height: 52px;
+  flex-basis: 52px;
+  padding: 0 14px;
+  gap: 12px;
+  background: var(--chrome);
+}
+
+.topbarTitle {
+  min-width: 190px;
+  gap: 1px;
+}
+
+.topbarControls {
+  gap: 6px;
+}
+
+.globalSearch {
+  min-height: 30px;
+  border-radius: 8px;
+}
+
+/* 状态条：更矮更素 */
+.workspaceStatusStrip {
+  gap: 6px;
+  padding: 7px 14px;
+  background: var(--chrome);
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.workspaceStatusStrip button {
+  min-height: 30px;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--line-soft);
+}
+
+.workspaceStatusStrip button:hover {
+  background: var(--fill);
+  box-shadow: 0 0 0 1px var(--line-soft);
+}
+
+/* 面板：统一圆角、更淡分隔 */
+.panel,
+.detailPanel,
+.runbook {
+  border-radius: var(--radius);
+  border-color: var(--line);
+}
+
+.sectionHeader {
+  padding: 12px 14px;
+}
+
+.sectionHeader p:not(.eyebrow) {
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.summaryPills span {
+  min-height: 20px;
+  padding: 3px 7px;
+  font-size: 11px;
+  background: var(--fill);
+  color: var(--secondary);
+}
+
+/* 草稿列表：Apple 邮件式紧凑行，徽章精简 */
+.draftPanel {
+  min-height: 0;
+  background: var(--surface);
+}
+
+.draftStatsBar {
+  padding: 8px 14px;
+  gap: 6px;
+  background: var(--surface);
+}
+
+.draftStatsBar article {
+  padding: 7px 9px;
+  border-radius: 8px;
+}
+
+.draftStatsBar strong {
+  font-size: 16px;
+}
+
+.filterToolbar {
+  padding: 8px 14px;
+  gap: 8px;
+}
+
+.draftRow {
+  padding: 10px 14px;
+  gap: 10px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.draftRow:hover {
+  background: var(--fill);
+}
+
+.draftRow.selected {
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.draftIndex {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  font-size: 10.5px;
+}
+
+.draftRowMain strong {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.draftRowMain small {
+  font-size: 12px;
+}
+
+.draftPrompt {
+  font-size: 11.5px;
+}
+
+.editedTag {
+  color: var(--orange);
+  font-weight: 600;
+}
+
+.draftRowMeta {
+  gap: 6px;
+  font-size: 11.5px;
+}
+
+/* 检查器：头部徽章收敛、元数据紧凑 */
+.drawerHeader {
+  padding: 12px 14px 10px;
+}
+
+.drawerHeader h2 {
+  font-size: 16px;
+}
+
+.drawerMeta {
+  gap: 6px;
+  margin: 10px 12px;
+}
+
+.drawerMeta article {
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+
+.drawerMeta strong {
+  font-size: 13px;
+}
+
+.quickActions {
+  gap: 6px;
+  margin: 0 12px 10px;
+}
+
+/* 表单：更克制的焦点态 */
+input,
+textarea,
+select {
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  background: var(--surface);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 122, 255, 0.5),
+    0 0 0 3px rgba(0, 122, 255, 0.16);
+}
+
+/* 卡片收敛：去重的边框与背景层级 */
+.editorCard,
+.sceneEditorItem,
+.settingsGroup,
+.assetCard,
+.runbookGrid article,
+.exportJsonPreview,
+.renderCommandPanel,
+.persistencePanel,
+.rulesPreview,
+.checkListPanel,
+.historyItem,
+.batchCheckItem {
+  border-color: var(--line-soft);
+  border-radius: 10px;
+}
+
+.settingsGrid,
+.assetLibraryLayout,
+.aiEditLayout,
+.inspectorLayout {
+  gap: 12px;
+}
+
+.groupHeader {
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+}
+
+/* 侧边栏：更紧凑的层级 */
+.sidebar {
+  padding: 10px 8px;
+  gap: 10px;
+}
+
+.brand {
+  min-height: 36px;
+  padding: 0 8px 7px;
+}
+
+.navSection {
+  padding: 6px 8px 3px;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+}
+
+.sideNav button {
+  min-height: 29px;
+  padding: 4px 8px;
+  border-radius: 7px;
+  font-size: 12.5px;
+}
+
+.navIcon {
+  width: 20px;
+  height: 20px;
+  font-size: 12px;
+}
+
+/* 检查器抽屉容器 */
+.inspectorColumn {
+  border-radius: var(--radius);
+  border-color: var(--line);
+}
+
+/* 设置页：商家字段两列化更整齐 */
+.settingsGroup {
+  padding: 12px;
+}
+
+.twoColumns {
+  gap: 8px;
+}
+
+/* 渲染任务 / 媒体 / 项目 / diff 等新面板统一 */
+.renderJobItem,
+.mediaJobItem,
+.projectItem,
+.diffScene,
+.diffSummaryGrid article,
+.voiceoverPanel,
+.alignPanel,
+.llmPanel,
+.sceneMediaEditor,
+.mediaToolbar {
+  border-color: var(--line-soft);
+  border-radius: 10px;
+}
+
+.renderJobLog,
+.transcriptPreview,
+.waveformCanvas,
+.waveformTimeline {
+  background: var(--surface-2);
+}
+
+/* 差异对比：变化高亮更明确 */
+.diffChanged {
+  background: var(--accent-soft);
+  color: var(--accent-press);
+  border-radius: 4px;
+}
+
+.diffScene.changed {
+  border-color: var(--accent-soft);
+}
+
+/* 迁移提示与导出门禁：语义色修复后生效 */
+.migrationNotice {
+  background: var(--accent-soft);
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.migrationNotice.failed {
+  background: var(--danger-soft);
+}
+
+.exportGatePanel.ok {
+  background: var(--success-soft);
+  border-color: var(--success-soft);
+}
+
+.exportGatePanel.blocked {
+  background: var(--danger-soft);
+  border-color: var(--danger-soft);
+}
+
+.assetFileStatus[data-status="missing"] {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.assetFileStatus[data-status="ok"] {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.assetFileStatus[data-status="unsupported"] {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+/* 主内容区留白更克制 */
+.workspaceView {
+  padding: 12px;
+  gap: 10px;
+}
+
+.contentRow {
+  padding: 12px 14px 14px;
+  gap: 12px;
+}
+
+/* 空状态更轻 */
+.emptyState strong {
+  font-size: 15px;
+}
+
+.emptyMini {
+  border-radius: 8px;
+}

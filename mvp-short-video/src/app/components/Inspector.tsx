@@ -525,13 +525,13 @@ export const DraftInspector = ({
             ×
           </button>
           <StatusBadge tone={statusTone}>
-            {analysis.exportReady ? "可导出" : analysis.blockingCount > 0 ? "需处理" : "待审核"}
-          </StatusBadge>
-          <StatusBadge tone={isEdited ? "warning" : "info"}>
-            {isEdited ? "已编辑" : "原始草稿"}
-          </StatusBadge>
-          <StatusBadge tone={isReviewed ? "success" : "warning"}>
-            {isReviewed ? "已审核" : "待审核"}
+            {analysis.exportReady
+              ? "可导出"
+              : analysis.blockingCount > 0
+                ? analysis.blockingCount + " 项需处理"
+                : isReviewed
+                  ? "已审核"
+                  : "待审核"}
           </StatusBadge>
         </div>
       </div>

@@ -206,15 +206,12 @@ export const DraftListPanel = ({
                 <span className="draftRowMeta">
                   <span>{templateLabel[draft.template] ?? draft.template}</span>
                   <span>{analysis.totalDuration}s</span>
-                  {isEdited ? <StatusBadge tone="warning">已编辑</StatusBadge> : null}
+                  {isEdited ? <span className="editedTag">已编辑</span> : null}
                   <StatusBadge tone={analysis.reviewComplete ? "success" : "warning"}>
                     {analysis.reviewComplete ? "已审核" : "待审核"}
                   </StatusBadge>
-                  <StatusBadge tone={analysis.missingAssets === 0 ? "success" : "danger"}>
+                  <StatusBadge tone={analysis.missingAssets === 0 ? "neutral" : "danger"}>
                     {analysis.missingAssets === 0 ? "素材齐" : "缺素材"}
-                  </StatusBadge>
-                  <StatusBadge tone={analysis.exportReady ? "success" : "warning"}>
-                    {analysis.exportReady ? "可导出" : "待审核"}
                   </StatusBadge>
                 </span>
               </button>
