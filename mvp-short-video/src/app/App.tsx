@@ -572,6 +572,8 @@ export const App = () => {
               saveOrDownload(fileName, content, downloadTextFile)
             }
             onRunDesktopRender={(job) => void workspace.runDesktopRenderJob(job)}
+            onRunRenderQueue={() => void workspace.runRenderQueue()}
+            renderQueueRunning={workspace.renderQueueRunning}
             onCancelDesktopRender={() => void workspace.cancelDesktopRenderJob()}
             onNewRenderJob={() => {
               if (
@@ -693,6 +695,15 @@ export const App = () => {
             onRegenerate={regenerateAll}
             onToggleInspector={() => setInspectorOpen((open) => !open)}
             onExportConfig={workspace.downloadMerchantConfig}
+            onSearchJump={() => {
+              setActiveView("drafts");
+              window.setTimeout(() => {
+                const input = document.querySelector<HTMLInputElement>(
+                  ".draftPanel .searchField input",
+                );
+                input?.focus();
+              }, 60);
+            }}
           />
 
           <MigrationNotice notice={notice} onDismiss={() => setNotice(null)} />

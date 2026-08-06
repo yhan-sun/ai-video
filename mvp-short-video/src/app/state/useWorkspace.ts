@@ -205,6 +205,8 @@ export const useWorkspace = () => {
   const [mediaToolsInfo, setMediaToolsInfo] = useState<MediaToolsInfo | null>(null);
   const [mediaJobs, setMediaJobs] = useState<Record<string, MediaJobState>>({});
   const [probeInfo, setProbeInfo] = useState<Record<string, MediaInfo | null>>({});
+  const [renderQueueRunning, setRenderQueueRunning] = useState(false);
+  const renderQueueRunningRef = useRef(false);
   const [isWide, setIsWide] = useState<boolean | null>(
     () =>
       typeof window.matchMedia !== "function" || window.matchMedia("(min-width: 1181px)").matches,
@@ -2093,11 +2095,12 @@ export const useWorkspace = () => {
   }, [selected, selectedDraftId, selectedIndex]);
 
   const runDesktopRenderJob = useCallback(
-    async (job: RenderJob) => {
+    async (job: RenderJob, options: { silent?: boolean } = {}): Promise<boolean> => {
       if (!isDesktop()) {
         setNotice({ kind: "failed", message: "桌面渲染仅在使用 Tauri 桌面端时可用。" });
-        return;
+        return false;
       }
+      const { silent = false } = options;
       setWorkspace((current) => ({
         ...current,
         renderJobs: current.renderJobs.map((item) =>
@@ -2147,18 +2150,85 @@ export const useWorkspace = () => {
           id: job.id,
           timeline: selected,
         });
-        setNotice({ kind: "info", message: "桌面渲染完成，输出：" + output });
+        if (!silent) {
+          setNotice({ kind: "info", message: "桌面渲染完成，输出：" + output });
+        }
+        return true;
       } catch (error) {
-        setNotice({
-          kind: "failed",
-          message: "桌面渲染失败：" + (error instanceof Error ? error.message : String(error)),
-        });
+        if (!silent) {
+          setNotice({
+            kind: "failed",
+            message: "桌面渲染失败：" + (error instanceof Error ? error.message : String(error)),
+          });
+        }
+        return false;
       } finally {
         unlisten();
       }
     },
     [selected, setNotice],
   );
+
+  const runRenderQueue = useCallback(async () => {
+    if (!isDesktop()) {
+      setNotice({ kind: "failed", message: "桌面渲染仅在使用 Tauri 桌面端时可用。" });
+      return;
+    }
+    const approved = drafts.filter((draft) => {
+      const edit = workspace.draftEdits[draft.draftId ?? ""];
+      return (edit?.reviewState ?? draft.reviewState) === "approved";
+    });
+    if (approved.length === 0) {
+      setNotice({ kind: "info", message: "没有已审核通过的草稿，请先逐条标记审核。" });
+      return;
+    }
+    if (renderQueueRunningRef.current) {
+      setNotice({ kind: "info", message: "批量渲染队列已在运行。" });
+      return;
+    }
+
+    const jobs: RenderJob[] = approved.map((draft, index) => ({
+      id: createId(),
+      createdAt: new Date().toISOString(),
+      draftId: draft.draftId ?? "",
+      title: draft.publishCopy.title,
+      status: "queued" as const,
+      command: "batch render",
+      log: ["批量渲染队列：等待中…"],
+      outputPath: "out/vertical-draft-" + String(index + 1).padStart(2, "0") + ".mp4",
+    }));
+
+    setWorkspace((current) => ({
+      ...current,
+      renderJobs: [...jobs, ...current.renderJobs].slice(0, 24),
+    }));
+    setRenderQueueRunning(true);
+    renderQueueRunningRef.current = true;
+    setNotice({
+      kind: "info",
+      message: "开始批量渲染 " + jobs.length + " 条已审核草稿（串行队列）。",
+    });
+
+    let failed = 0;
+    for (const job of jobs) {
+      const ok = await runDesktopRenderJob(job, { silent: true });
+      if (!ok) {
+        failed += 1;
+      }
+    }
+
+    renderQueueRunningRef.current = false;
+    setRenderQueueRunning(false);
+    setNotice({
+      kind: "info",
+      message:
+        "批量渲染完成：" +
+        (jobs.length - failed) +
+        " 条成功" +
+        (failed > 0 ? "，" + failed + " 条失败（详见任务日志）" : "") +
+        "。",
+    });
+  }, [drafts, runDesktopRenderJob, setNotice, workspace.draftEdits]);
 
   const cancelDesktopRenderJob = useCallback(async () => {
     const cancelled = await desktopCancelRenderJob();
@@ -2672,6 +2742,8 @@ export const useWorkspace = () => {
     llmBusy,
     createRenderJobForSelected,
     runDesktopRenderJob,
+    runRenderQueue,
+    renderQueueRunning,
     cancelDesktopRenderJob,
     removeRenderJob,
     mediaToolsInfo,

@@ -31,6 +31,8 @@ export const ExportRunbook = ({
   desktopMode,
   onDesktopSave,
   onRunDesktopRender,
+  onRunRenderQueue,
+  renderQueueRunning,
   onCancelDesktopRender,
   onForceDownload,
   onDownloadCurrent,
@@ -60,6 +62,8 @@ export const ExportRunbook = ({
   desktopMode: boolean;
   onDesktopSave: (fileName: string, content: string) => Promise<string | null>;
   onRunDesktopRender: (job: RenderJob) => void;
+  onRunRenderQueue: () => void;
+  renderQueueRunning: boolean;
   onCancelDesktopRender: () => void;
   onForceDownload: () => void;
   onDownloadCurrent: () => void;
@@ -344,6 +348,16 @@ export const ExportRunbook = ({
             >
               {desktopMode ? "在桌面端渲染当前草稿" : "新建渲染任务"}
             </button>
+            {desktopMode ? (
+              <button
+                type="button"
+                className="secondaryButton"
+                disabled={renderQueueRunning || !gate.ok}
+                onClick={onRunRenderQueue}
+              >
+                {renderQueueRunning ? "批量渲染中…" : "批量渲染已审核草稿"}
+              </button>
+            ) : null}
           </div>
         </div>
         <p className="renderJobHint">

@@ -3814,3 +3814,14 @@ select:focus {
     0 0 0 2px var(--accent),
     0 0 0 3px var(--accent-soft);
 }
+
+/* 窄屏搜索收纳：顶栏搜索隐藏，跳转按钮显示（>860px 时按钮隐藏） */
+.searchJumpButton {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .searchJumpButton {
+    display: inline-flex;
+  }
+}

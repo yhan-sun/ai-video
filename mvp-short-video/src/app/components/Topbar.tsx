@@ -10,6 +10,7 @@ export const Topbar = ({
   onRegenerate,
   onToggleInspector,
   onExportConfig,
+  onSearchJump,
 }: {
   title: string;
   location: string;
@@ -19,6 +20,7 @@ export const Topbar = ({
   onRegenerate: () => void;
   onToggleInspector: () => void;
   onExportConfig: () => void;
+  onSearchJump: () => void;
 }) => (
   <header className="topbar">
     <div className="topbarTitle">
@@ -46,6 +48,14 @@ export const Topbar = ({
           aria-label="全局搜索草稿"
         />
       </div>
+      <button
+        type="button"
+        className="secondaryButton searchJumpButton"
+        onClick={onSearchJump}
+        aria-label="搜索草稿"
+      >
+        ⌕ 搜索
+      </button>
       <button className="secondaryButton" type="button" onClick={onExportConfig}>
         导出配置
       </button>
