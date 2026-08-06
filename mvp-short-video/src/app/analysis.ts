@@ -176,6 +176,16 @@ export const analyzeDraft = (
   );
   const emptyHeadlineScenes = timeline.scenes.filter((scene) => !scene.headline.trim());
   const emptySubtitleScenes = timeline.scenes.filter((scene) => !(scene.subtitle ?? "").trim());
+  const missingSourceScenes = timeline.scenes.filter((scene) => {
+    if (!scene.subtitleSource) {
+      return false;
+    }
+    const source = scene.subtitleSource.asset.replace(/^\/+/, "").replace(/^public\//, "");
+    const available = new Set(
+      availableAssets.map((asset) => asset.replace(/^\/+/, "").replace(/^public\//, "")),
+    );
+    return !available.has(source);
+  });
   const invalidDurationScenes = timeline.scenes.filter(
     (scene) => !Number.isFinite(scene.duration) || scene.duration < 1 || scene.duration > 10,
   );
@@ -294,6 +304,16 @@ export const analyzeDraft = (
       })(),
       severity:
         timeline.scenes.filter((scene) => scene.subtitleSource).length > 0 ? "info" : "success",
+      target: "assets",
+    },
+    {
+      label: "字幕来源素材",
+      detail:
+        missingSourceScenes.length === 0
+          ? "字幕来源素材均存在于素材库"
+          : missingSourceScenes.map((scene) => sceneLabel[scene.type]).join("、") +
+            " 的字幕来源素材不在素材库（可能已删除），导出前请核对",
+      severity: missingSourceScenes.length > 0 ? "warning" : "success",
       target: "assets",
     },
     {

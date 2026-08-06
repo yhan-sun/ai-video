@@ -450,6 +450,9 @@ export const App = () => {
             onApplyAssignments={(asset, assignments) =>
               workspace.applyTranscriptAssignments(asset.path, assignments)
             }
+            onSaveAssignments={(asset, assignments) =>
+              workspace.saveTranscriptAssignments(asset.path, assignments)
+            }
             onCancelMediaJob={workspace.cancelMediaJob}
             onRemoveMediaJob={workspace.removeMediaJob}
             onToggleAssetTag={toggleAssetTag}

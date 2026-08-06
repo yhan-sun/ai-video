@@ -166,3 +166,37 @@ export const subtitleWindowLabel = (scene: Scene) => {
   const { segmentStart, segmentEnd } = scene.subtitleSource;
   return `${segmentStart.toFixed(1)}–${segmentEnd.toFixed(1)}s`;
 };
+
+export type SavedAssignment = { index: number; sceneId: string | null };
+
+/** 把面板状态（index → "auto" | "" | sceneId）序列化为可持久化的指派列表（auto 不保存）。 */
+export const serializeAssignments = (assignments: Record<number, string>): SavedAssignment[] =>
+  Object.entries(assignments)
+    .map(([index, sceneId]) => ({
+      index: Number(index),
+      sceneId: sceneId === "auto" ? null : sceneId,
+    }))
+    .filter((item) => Number.isInteger(item.index) && item.sceneId !== null)
+    .sort((a, b) => a.index - b.index);
+
+/** 从素材已保存的指派列表恢复面板状态；null（不填入）与缺失段保持默认（自动）。 */
+export const hydrateAssignments = (
+  saved: SavedAssignment[] | undefined,
+): Record<number, string> => {
+  if (!saved) {
+    return {};
+  }
+  const result: Record<number, string> = {};
+  saved.forEach(({ index, sceneId }) => {
+    if (Number.isInteger(index) && sceneId !== null) {
+      result[index] = sceneId;
+    }
+  });
+  return result;
+};
+
+export const assignmentSummary = (assignments: Record<number, string>, segmentCount: number) => {
+  const assigned = Object.values(assignments).filter((sceneId) => sceneId !== "").length;
+  const excluded = Object.values(assignments).filter((sceneId) => sceneId === "").length;
+  return { assigned, excluded, auto: Math.max(0, segmentCount - assigned - excluded) };
+};

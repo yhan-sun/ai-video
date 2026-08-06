@@ -95,10 +95,16 @@ export const TranscriptSegmentSchema = z.object({
   text: z.string(),
 });
 
+export const TranscriptAssignmentSchema = z.object({
+  index: z.number().int().min(0),
+  sceneId: z.string().nullable(),
+});
+
 export const TranscriptSchema = z.object({
   language: z.string().optional(),
   model: z.string().optional(),
   segments: z.array(TranscriptSegmentSchema).default([]),
+  assignments: z.array(TranscriptAssignmentSchema).default([]),
 });
 
 export const SourceClipSchema = z.object({
@@ -252,6 +258,7 @@ export type SceneMedia = z.infer<typeof SceneMediaSchema>;
 export type SubtitleSource = z.infer<typeof SubtitleSourceSchema>;
 export type AssetAuthorization = z.infer<typeof AssetAuthorizationSchema>;
 export type TranscriptSegment = z.infer<typeof TranscriptSegmentSchema>;
+export type TranscriptAssignment = z.infer<typeof TranscriptAssignmentSchema>;
 export type Transcript = z.infer<typeof TranscriptSchema>;
 export type SourceClip = z.infer<typeof SourceClipSchema>;
 export type Scene = z.infer<typeof SceneSchema>;

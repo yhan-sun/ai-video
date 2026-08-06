@@ -47,6 +47,7 @@ import {
 import {
   buildAssignedSubtitlePatch,
   buildSubtitleScenePatch,
+  serializeAssignments,
   type SegmentAssignment,
 } from "../subtitles.ts";
 import { generateProposalsWithProvider, proposalToTimeline } from "../llm.ts";
@@ -1348,6 +1349,7 @@ export const useWorkspace = () => {
                     language: result.language,
                     model: result.model,
                     segments: result.segments,
+                    assignments: [],
                   },
                 },
               },
@@ -1462,6 +1464,31 @@ export const useWorkspace = () => {
     ],
   );
 
+  const persistTranscriptAssignments = useCallback(
+    (assetPath: string, assignments: SegmentAssignment[]) => {
+      setWorkspace((current) => {
+        const meta = current.assetMeta[assetPath];
+        if (!meta?.transcript) {
+          return current;
+        }
+        const saved = assignments
+          .filter((item) => item.sceneId !== null)
+          .map((item) => ({ index: item.index, sceneId: item.sceneId }));
+        return {
+          ...current,
+          assetMeta: {
+            ...current.assetMeta,
+            [assetPath]: {
+              ...meta,
+              transcript: { ...meta.transcript, assignments: saved },
+            },
+          },
+        };
+      });
+    },
+    [],
+  );
+
   const applyTranscriptAssignments = useCallback(
     (assetPath: string, assignments: SegmentAssignment[]) => {
       const transcript = workspace.assetMeta[assetPath]?.transcript;
@@ -1492,6 +1519,7 @@ export const useWorkspace = () => {
 
         return withReviewReset({ ...(edit ?? {}), scenes });
       });
+      persistTranscriptAssignments(assetPath, assignments);
       setNotice({
         kind: "info",
         message:
@@ -1505,6 +1533,7 @@ export const useWorkspace = () => {
       setActiveView("preview");
     },
     [
+      persistTranscriptAssignments,
       rememberDraftBeforeAI,
       selected,
       selectedDraftId,
@@ -1514,6 +1543,14 @@ export const useWorkspace = () => {
       updateEdit,
       workspace.assetMeta,
     ],
+  );
+
+  const saveTranscriptAssignments = useCallback(
+    (assetPath: string, assignments: Record<number, string>) => {
+      persistTranscriptAssignments(assetPath, serializeAssignments(assignments));
+      setNotice({ kind: "info", message: "字幕指派已保存到素材：" + assetPath });
+    },
+    [persistTranscriptAssignments, setNotice],
   );
 
   const startSlice = useCallback(
@@ -2485,6 +2522,7 @@ export const useWorkspace = () => {
     removeMediaJob,
     applyTranscriptToDraft,
     applyTranscriptAssignments,
+    saveTranscriptAssignments,
     updateSelectedPublish,
     updateSelectedHashtags,
     updateSelectedScene,

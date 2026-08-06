@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
+  assignmentSummary,
   buildAssignedSubtitlePatch,
   buildSubtitleScenePatch,
+  hydrateAssignments,
+  serializeAssignments,
   subtitlesForScenes,
   subtitleWindowLabel,
 } from "../src/app/subtitles.ts";
 import { buildTimeline, sampleAssets, sampleConfig } from "../src/app/timeline.ts";
 import { analyzeDraft, applyDraftEdit, withReviewReset } from "../src/app/analysis.ts";
-import { SubtitleSourceSchema, type Transcript } from "../src/contract/schema.ts";
+import { SubtitleSourceSchema, TranscriptSchema, type Transcript } from "../src/contract/schema.ts";
 
 const transcript: Transcript = {
   language: "zh",
@@ -155,5 +158,85 @@ describe("manual segment assignment", () => {
     // 无效指派被忽略后，相关 segment 按时间窗口自动归属（cta 窗口含“收藏后慢慢看”）。
     expect(patch.cta.subtitle).toContain("收藏后慢慢看");
     expect(patch.cta.subtitleSource.segmentEnd).toBe(20);
+  });
+});
+
+describe("assignment persistence helpers", () => {
+  it("serializes only explicit assignments and drops auto", () => {
+    expect(serializeAssignments({ 0: "auto", 2: "hook", 3: "", 5: "cta" })).toEqual([
+      { index: 2, sceneId: "hook" },
+      { index: 3, sceneId: "" },
+      { index: 5, sceneId: "cta" },
+    ]);
+  });
+
+  it("hydrates saved assignments back to panel state", () => {
+    const state = hydrateAssignments([
+      { index: 1, sceneId: "pain" },
+      { index: 4, sceneId: null },
+      { index: 9, sceneId: "cta" },
+    ]);
+    // null 条目表示"无指派"（保持自动），不恢复为显式排除。
+    expect(state).toEqual({ 1: "pain", 9: "cta" });
+    expect(hydrateAssignments([{ index: 3, sceneId: "" }])).toEqual({ 3: "" });
+    expect(hydrateAssignments(undefined)).toEqual({});
+  });
+
+  it("summarizes assigned, excluded and auto segments", () => {
+    const summary = assignmentSummary({ 0: "hook", 2: "", 3: "cta" }, 6);
+    expect(summary).toEqual({ assigned: 2, excluded: 1, auto: 3 });
+  });
+
+  it("keeps transcript assignments schema-valid", () => {
+    const transcriptWithAssignments = {
+      ...transcript,
+      assignments: [
+        { index: 0, sceneId: "hook" },
+        { index: 4, sceneId: null },
+      ],
+    };
+    const parsed = TranscriptSchema.safeParse(transcriptWithAssignments);
+    expect(parsed.success).toBe(true);
+    expect(parsed.success && parsed.data.assignments).toHaveLength(2);
+  });
+});
+
+describe("subtitle source consistency", () => {
+  it("warns when the subtitle source asset is missing from the library", () => {
+    const draft = buildTimeline(sampleConfig, sampleAssets, 0);
+    const applied = applyDraftEdit(
+      draft,
+      withReviewReset({
+        scenes: buildSubtitleScenePatch(draft, transcript, "clips/deleted.mp4"),
+      }),
+    );
+    const analysis = analyzeDraft(applied, sampleConfig, sampleAssets, {
+      count: 10,
+      templateIds: ["avoid-mistake"],
+      tone: "practical",
+      minDuration: 18,
+      maxDuration: 24,
+    });
+    const check = analysis.checks.find((item) => item.label === "字幕来源素材");
+    expect(check?.severity).toBe("warning");
+  });
+
+  it("passes when the source asset exists", () => {
+    const draft = buildTimeline(sampleConfig, sampleAssets, 0);
+    const applied = applyDraftEdit(
+      draft,
+      withReviewReset({
+        scenes: buildSubtitleScenePatch(draft, transcript, "assets/hero-courtyard.svg"),
+      }),
+    );
+    const analysis = analyzeDraft(applied, sampleConfig, sampleAssets, {
+      count: 10,
+      templateIds: ["avoid-mistake"],
+      tone: "practical",
+      minDuration: 18,
+      maxDuration: 24,
+    });
+    const check = analysis.checks.find((item) => item.label === "字幕来源素材");
+    expect(check?.severity).toBe("success");
   });
 });

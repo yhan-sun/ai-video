@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { assetSource } from "../format.ts";
 import { previewUrlFor } from "../desktop.ts";
+import { hydrateAssignments } from "../subtitles.ts";
 import { assetTagOptions, sceneLabel } from "../types.ts";
 import type {
   AssetAuthorization,
@@ -79,6 +80,7 @@ const MediaToolbar = ({
   onStartTranscribe,
   onApplyTranscript,
   onApplyAssignments,
+  onSaveAssignments,
   onCancelMediaJob,
   onRemoveMediaJob,
 }: {
@@ -96,6 +98,7 @@ const MediaToolbar = ({
     asset: AssetItem,
     assignments: Array<{ index: number; sceneId: string | null }>,
   ) => void;
+  onSaveAssignments: (asset: AssetItem, assignments: Record<number, string>) => void;
   onCancelMediaJob: (jobId: string) => void;
   onRemoveMediaJob: (jobId: string) => void;
 }) => {
@@ -105,6 +108,7 @@ const MediaToolbar = ({
   const [aligning, setAligning] = useState<string | null>(null);
   const [assignments, setAssignments] = useState<Record<number, string>>({});
   const [dragOverScene, setDragOverScene] = useState<string | null>(null);
+  const [selectedSegments, setSelectedSegments] = useState<Set<number>>(new Set());
 
   const toolsReady = Boolean(tools?.ffmpeg && tools?.ffprobe);
   const videoAssets = assetLibrary.filter((asset) => asset.type === "video");
@@ -119,17 +123,45 @@ const MediaToolbar = ({
   };
 
   const handleSegmentDragStart = (event: React.DragEvent, index: number) => {
-    event.dataTransfer.setData("text/plain", String(index));
+    const group = selectedSegments.has(index) ? selectedSegments : new Set([index]);
+    event.dataTransfer.setData("text/plain", Array.from(group).join(","));
     event.dataTransfer.effectAllowed = "copy";
   };
 
   const handleSceneDrop = (event: React.DragEvent, sceneId: string) => {
     event.preventDefault();
     setDragOverScene(null);
-    const index = Number(event.dataTransfer.getData("text/plain"));
-    if (Number.isInteger(index) && index >= 0) {
-      setAssignments((current) => ({ ...current, [index]: sceneId }));
+    const indexes = event.dataTransfer
+      .getData("text/plain")
+      .split(",")
+      .map(Number)
+      .filter(Number.isInteger);
+    if (indexes.length > 0) {
+      setAssignments((current) => {
+        const next = { ...current };
+        indexes.forEach((index) => {
+          next[index] = sceneId;
+        });
+        return next;
+      });
     }
+  };
+
+  const toggleSegmentSelection = (index: number, additive: boolean) => {
+    setSelectedSegments((current) => {
+      const next = new Set(current);
+      if (additive) {
+        if (next.has(index)) {
+          next.delete(index);
+        } else {
+          next.add(index);
+        }
+      } else {
+        next.clear();
+        next.add(index);
+      }
+      return next;
+    });
   };
 
   return (
@@ -255,8 +287,25 @@ const MediaToolbar = ({
                       <div className="groupHeader">
                         <strong>字幕对齐</strong>
                         <span>
-                          把字幕段指派到分镜（"自动"=按时间窗口归属），时间轴色块即时反映归属。
+                          点击选中（Shift 多选），把字幕段拖到目标分镜；"自动"=按时间窗口归属。
                         </span>
+                      </div>
+                      <div className="alignSummary">
+                        {(() => {
+                          const assigned = Object.values(assignments).filter(
+                            (sceneId) => sceneId !== "" && sceneId !== "auto",
+                          ).length;
+                          const excluded = Object.values(assignments).filter(
+                            (sceneId) => sceneId === "",
+                          ).length;
+                          return (
+                            <StatusBadge tone="info">
+                              已指派 {assigned} · 排除 {excluded} · 自动{" "}
+                              {Math.max(0, asset.transcript.segments.length - assigned - excluded)}
+                            </StatusBadge>
+                          );
+                        })()}
+                        <StatusBadge tone="success">已选 {selectedSegments.size} 段</StatusBadge>
                       </div>
                       <div className="subtitleTimeline" aria-label="字幕时间轴">
                         <div className="subtitleSceneTrack">
@@ -295,9 +344,33 @@ const MediaToolbar = ({
                             return (
                               <span
                                 key={index}
-                                className="subtitleSegmentBlock draggable"
+                                className={
+                                  "subtitleSegmentBlock draggable" +
+                                  (selectedSegments.has(index) ? " selected" : "")
+                                }
                                 draggable
                                 onDragStart={(event) => handleSegmentDragStart(event, index)}
+                                onClick={(event) => toggleSegmentSelection(index, event.shiftKey)}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Enter" || event.key === " ") {
+                                    event.preventDefault();
+                                    toggleSegmentSelection(index, event.shiftKey);
+                                  }
+                                }}
+                                tabIndex={0}
+                                role="button"
+                                aria-label={
+                                  "字幕段 " +
+                                  (index + 1) +
+                                  "（" +
+                                  segment.text +
+                                  "），当前" +
+                                  (assigned === "auto"
+                                    ? "自动"
+                                    : assigned === ""
+                                      ? "不填入"
+                                      : assigned)
+                                }
                                 style={{
                                   left: left + "%",
                                   width: width + "%",
@@ -306,14 +379,17 @@ const MediaToolbar = ({
                                     assigned === "auto" ? null : assigned,
                                   ),
                                 }}
-                                title={"拖动以指派： " + segment.text}
+                                title={
+                                  "拖动以指派： " + segment.text + "（Shift 点击可多选后整组拖入）"
+                                }
                               />
                             );
                           })}
                         </div>
                       </div>
                       <p className="assetValidationNote">
-                        提示：可直接把下方/上方字幕色块拖到目标分镜色块上完成指派，或用列表下拉。
+                        提示：直接拖动字幕色块到目标分镜色块；Shift
+                        点击多选后可整组拖入；下拉/键盘（Enter/空格）也可指派。
                       </p>
                       <div className="assignmentList">
                         {asset.transcript.segments.map((segment, index) => (
@@ -346,6 +422,32 @@ const MediaToolbar = ({
                       <div className="cardActions">
                         <button
                           type="button"
+                          className="secondaryButton"
+                          onClick={() =>
+                            setSelectedSegments(
+                              new Set((asset.transcript?.segments ?? []).map((_, index) => index)),
+                            )
+                          }
+                        >
+                          全选
+                        </button>
+                        <button
+                          type="button"
+                          className="secondaryButton"
+                          disabled={selectedSegments.size === 0}
+                          onClick={() => setSelectedSegments(new Set())}
+                        >
+                          清除选择
+                        </button>
+                        <button
+                          type="button"
+                          className="secondaryButton"
+                          onClick={() => onSaveAssignments(asset, assignments)}
+                        >
+                          保存指派
+                        </button>
+                        <button
+                          type="button"
                           className="primaryButton"
                           onClick={() =>
                             onApplyAssignments(
@@ -365,6 +467,7 @@ const MediaToolbar = ({
                           onClick={() => {
                             setAligning(null);
                             setAssignments({});
+                            setSelectedSegments(new Set());
                           }}
                         >
                           收起
@@ -386,7 +489,8 @@ const MediaToolbar = ({
                           className="secondaryButton"
                           onClick={() => {
                             setAligning(asset.path);
-                            setAssignments({});
+                            setAssignments(hydrateAssignments(asset.transcript?.assignments));
+                            setSelectedSegments(new Set());
                           }}
                         >
                           对齐字幕
@@ -492,6 +596,7 @@ export const AssetLibraryPanel = ({
   onStartTranscribe,
   onApplyTranscript,
   onApplyAssignments,
+  onSaveAssignments,
   onCancelMediaJob,
   onRemoveMediaJob,
   onToggleAssetTag,
@@ -527,6 +632,7 @@ export const AssetLibraryPanel = ({
     asset: AssetItem,
     assignments: Array<{ index: number; sceneId: string | null }>,
   ) => void;
+  onSaveAssignments: (asset: AssetItem, assignments: Record<number, string>) => void;
   onCancelMediaJob: (jobId: string) => void;
   onRemoveMediaJob: (jobId: string) => void;
   onToggleAssetTag: (asset: string, tag: AssetTag) => void;
@@ -696,6 +802,7 @@ export const AssetLibraryPanel = ({
           onStartTranscribe={onStartTranscribe}
           onApplyTranscript={onApplyTranscript}
           onApplyAssignments={onApplyAssignments}
+          onSaveAssignments={onSaveAssignments}
           onCancelMediaJob={onCancelMediaJob}
           onRemoveMediaJob={onRemoveMediaJob}
         />
