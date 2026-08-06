@@ -184,10 +184,38 @@ export const industryProfiles: IndustryProfile[] = [
 export const matchIndustryProfile = (industry: string): IndustryProfile | undefined =>
   industryProfiles.find((profile) => profile.match.test(industry));
 
+export type RegionDialect = {
+  friendly: string;
+  prefix: string;
+};
+
+export const regionDialect = (location: string): RegionDialect => {
+  if (/广东|广州|深圳|佛山|东莞|潮汕/.test(location)) {
+    return { friendly: "街坊", prefix: "老广都知道" };
+  }
+  if (/四川|重庆|成都|绵阳/.test(location)) {
+    return { friendly: "老师", prefix: "巴适得很" };
+  }
+  if (/东北|沈阳|哈尔滨|大连|长春/.test(location)) {
+    return { friendly: "老铁", prefix: "贼实在" };
+  }
+  if (/陕西|西安|宝鸡/.test(location)) {
+    return { friendly: "伙计", prefix: "嘹咋咧" };
+  }
+  if (/云南|大理|丽江|昆明|西双版纳/.test(location)) {
+    return { friendly: "朋友", prefix: "值得慢慢逛" };
+  }
+  if (/江苏|苏州|南京|扬州/.test(location)) {
+    return { friendly: "老友", prefix: "清爽实惠" };
+  }
+  return { friendly: "朋友", prefix: "" };
+};
+
 const templates: Array<{
   id: TemplateId;
   label: string;
   hook: (location: string, industry: string, profile?: IndustryProfile) => string;
+  hookVariants: string[];
   painLead: string;
   offerLead: string;
 }> = [
@@ -195,6 +223,12 @@ const templates: Array<{
     id: "avoid-mistake",
     label: "避坑型",
     hook: (location) => "第一次来" + location + "，别只看价格",
+    hookVariants: [
+      "第一次来{location}，别只看价格",
+      "去{location}之前，先避开这个坑",
+      "{location}避坑指南：这 3 点先看",
+      "别再被{location}网红推荐带偏了",
+    ],
     painLead: "很多人第一次选择时容易踩坑",
     offerLead: "我整理了一份不踩坑清单",
   },
@@ -202,6 +236,12 @@ const templates: Array<{
     id: "hidden-gem",
     label: "宝藏型",
     hook: (location, industry) => location + "这个" + industry + "，适合慢慢体验",
+    hookVariants: [
+      "{location}这个{industry}，适合慢慢体验",
+      "{location}的隐藏宝藏，知道的人不多",
+      "在{location}，这家{industry}值得专门跑一趟",
+      "小众但舒服：{location}的{industry}",
+    ],
     painLead: "热门选择不一定最适合你",
     offerLead: "这份小众攻略可以直接收藏",
   },
@@ -209,6 +249,12 @@ const templates: Array<{
     id: "comparison",
     label: "对比型",
     hook: (_location, industry) => "选" + industry + "，别只看网红推荐",
+    hookVariants: [
+      "选{industry}，别只看网红推荐",
+      "{industry}怎么选？先看这 3 个判断标准",
+      "同样是{industry}，差别原来在这",
+      "别急着下单，{industry}先对比这几点",
+    ],
     painLead: "真正影响体验的，往往是这些细节",
     offerLead: "我把判断标准整理好了",
   },
@@ -216,6 +262,12 @@ const templates: Array<{
     id: "checklist",
     label: "清单型",
     hook: (location) => "去" + location + "之前，先看这 3 点",
+    hookVariants: [
+      "去{location}之前，先看这 3 点",
+      "收藏这份{location}清单，省心很多",
+      "{location}出行前，照着这张清单检查",
+      "第一次去{location}，建议先看完这条",
+    ],
     painLead: "少做一步功课，体验可能差很多",
     offerLead: "按这份清单选，省心很多",
   },
@@ -438,10 +490,17 @@ export const buildTimeline = (
     rng,
   );
   const hookLead = profile ? profile.hookLead : "第一次来";
+  const hookVariants = template.hookVariants.map((variant) =>
+    variant.replace(/\{location\}/g, displayLocation).replace(/\{industry\}/g, config.industry),
+  );
   const hook = fitText(
     variant === 0 && config.hook
       ? config.hook
-      : template.hook(displayLocation, config.industry, profile) || hookLead + displayLocation,
+      : pick(
+          hookVariants,
+          rng,
+          template.hook(displayLocation, config.industry, profile) || hookLead + displayLocation,
+        ),
     HEADLINE_MAX,
   );
   const keyword = config.keyword || displayLocation || "攻略";
@@ -457,6 +516,7 @@ export const buildTimeline = (
   const painHeadline = fitText(firstPain, HEADLINE_MAX);
   const offerHeadline = fitText(config.offer ?? profile?.offerLead ?? "评论区领取完整清单", 32);
   const brandSuffix = config.brandStyle ? "｜" + config.brandStyle : "";
+  const dialect = regionDialect(config.location);
 
   const scenes: Scene[] = [
     {
@@ -464,7 +524,10 @@ export const buildTimeline = (
       type: "hook",
       duration: durations[0],
       headline: hook,
-      subtitle: fitText(config.audience + tone.hookSuffix, SUBTITLE_MAX),
+      subtitle: fitText(
+        (dialect.prefix ? dialect.prefix + "，" : "") + config.audience + tone.hookSuffix,
+        SUBTITLE_MAX,
+      ),
       badge: "3秒钩子",
       color: "#ffdd2d",
       asset: hookAsset,
@@ -522,7 +585,13 @@ export const buildTimeline = (
   ];
 
   const bodyLines = [
-    config.name + "给" + config.audience + "的" + tone.bodyLead + painHeadline,
+    config.name +
+      "给" +
+      (dialect.friendly === "朋友" ? "" : dialect.friendly + "们") +
+      config.audience +
+      "的" +
+      tone.bodyLead +
+      painHeadline,
     tone.proofPrefix +
       "：" +
       (config.sellingPoints.slice(0, 3).join("、") || firstSellingPoint) +

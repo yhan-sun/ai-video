@@ -16,7 +16,8 @@ import { AIEditPanel } from "./components/AIEdit.tsx";
 import { ExportRunbook } from "./components/ExportRunbook.tsx";
 import { BatchCheckPanel, MerchantSettingsPanel, RulesPanel } from "./components/Settings.tsx";
 import type { MerchantField } from "./components/Settings.tsx";
-import type { ProjectMeta, ToneId } from "./types.ts";
+import type { ProjectMeta, SceneEdit, ToneId } from "./types.ts";
+import type { Timeline } from "./types.ts";
 
 export const App = () => {
   const workspace = useWorkspace();
@@ -25,6 +26,7 @@ export const App = () => {
   const [projects, setProjects] = useState<ProjectMeta[]>([]);
   const [diffIndexA, setDiffIndexA] = useState(0);
   const [diffIndexB, setDiffIndexB] = useState(1);
+  const [diffIndexC, setDiffIndexC] = useState<number | null>(null);
 
   const refreshProjects = useCallback(() => {
     void workspace.listProjects().then((list) => setProjects(list));
@@ -545,8 +547,12 @@ export const App = () => {
             drafts={drafts}
             indexA={diffIndexA}
             indexB={diffIndexB}
+            indexC={diffIndexC}
             onSetA={(index) => setDiffIndexA(Math.min(index, drafts.length - 1))}
             onSetB={(index) => setDiffIndexB(Math.min(index, drafts.length - 1))}
+            onSetC={(index) =>
+              setDiffIndexC(index === null ? null : Math.min(index, drafts.length - 1))
+            }
             onGoToDraft={(index) => {
               selectDraft(index);
               setActiveView("preview");
@@ -556,6 +562,39 @@ export const App = () => {
               if (draft?.draftId) {
                 workspace.toggleReviewForDraft(draft.draftId, draft);
               }
+            }}
+            onMerge={(sourceIndex, targetIndex, sceneId, field) => {
+              const source = drafts[sourceIndex];
+              const target = drafts[targetIndex];
+              if (!source || !target?.draftId) {
+                return;
+              }
+              const patch: {
+                publishCopy?: Partial<Timeline["publishCopy"]>;
+                scenes?: Record<string, SceneEdit>;
+              } = {};
+              if (sceneId) {
+                const scene = source.scenes.find((item) => item.id === sceneId);
+                if (!scene) {
+                  return;
+                }
+                if (field === "asset") {
+                  patch.scenes = { [sceneId]: { asset: scene.asset, assetType: scene.assetType } };
+                } else if (field === "headline") {
+                  patch.scenes = { [sceneId]: { headline: scene.headline } };
+                } else if (field === "subtitle") {
+                  patch.scenes = { [sceneId]: { subtitle: scene.subtitle } };
+                } else if (field === "duration") {
+                  patch.scenes = { [sceneId]: { duration: scene.duration } };
+                } else {
+                  patch.scenes = { [sceneId]: { type: scene.type } };
+                }
+              } else if (field === "title" || field === "body" || field === "commentPrompt") {
+                patch.publishCopy = { [field]: source.publishCopy[field] };
+              } else if (field === "hashtags") {
+                patch.publishCopy = { hashtags: source.publishCopy.hashtags };
+              }
+              workspace.applyMergeToDraft(target.draftId, patch);
             }}
             reviewStates={drafts.map((draft) => {
               const edit = rawWorkspace.draftEdits[draft.draftId ?? ""];

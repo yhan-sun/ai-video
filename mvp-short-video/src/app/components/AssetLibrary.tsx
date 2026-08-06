@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { assetSource } from "../format.ts";
+import { assetFileName, assetSource } from "../format.ts";
 import { previewUrlFor } from "../desktop.ts";
 import { buildVoiceOverScript, hydrateAssignments } from "../subtitles.ts";
 import { assetTagOptions, sceneLabel } from "../types.ts";
@@ -106,6 +106,56 @@ const WaveformCanvas = ({ peaks }: { peaks: number[] }) => {
   );
 };
 
+// 时间轴对齐波形：按素材时长映射到草稿总时长坐标系（与字幕段时间轴同比例）。
+const WaveformTimeline = ({
+  peaks,
+  assetDuration,
+  totalDuration,
+}: {
+  peaks: number[];
+  assetDuration: number;
+  totalDuration: number;
+}) => {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      return;
+    }
+    const width = canvas.width;
+    const height = canvas.height;
+    const context = canvas.getContext("2d");
+    if (!context) {
+      return;
+    }
+    context.clearRect(0, 0, width, height);
+    if (peaks.length === 0 || assetDuration <= 0 || totalDuration <= 0) {
+      return;
+    }
+    const bucketSeconds = assetDuration / peaks.length;
+    const pxPerSecond = width / totalDuration;
+    context.fillStyle = "var(--accent)";
+    peaks.forEach((peak, index) => {
+      const startX = index * bucketSeconds * pxPerSecond;
+      const barWidth = Math.max(1, bucketSeconds * pxPerSecond - 1);
+      const barHeight = Math.max(2, (peak / 255) * height);
+      const y = (height - barHeight) / 2;
+      context.fillRect(startX, y, barWidth, barHeight);
+    });
+  }, [assetDuration, peaks, totalDuration]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={900}
+      height={40}
+      className="waveformTimeline"
+      aria-label="时间轴对齐波形"
+    />
+  );
+};
+
 const MediaToolbar = ({
   tools,
   onRefresh,
@@ -157,6 +207,19 @@ const MediaToolbar = ({
   const [selectedSegments, setSelectedSegments] = useState<Set<number>>(new Set());
   const [voiceoverAsset, setVoiceoverAsset] = useState<string | null>(null);
   const [copiedScript, setCopiedScript] = useState(false);
+  const [overlayAssets, setOverlayAssets] = useState<Set<string>>(new Set());
+
+  const transcriptAssets = assetLibrary.filter(
+    (asset) => asset.type === "video" && asset.transcript?.segments?.length,
+  );
+
+  const openAlign = (assetPath: string) => {
+    const asset = assetLibrary.find((item) => item.path === assetPath);
+    setAligning(assetPath);
+    setAssignments(hydrateAssignments(asset?.transcript?.assignments));
+    setSelectedSegments(new Set());
+    setOverlayAssets(new Set([assetPath]));
+  };
 
   const toolsReady = Boolean(tools?.ffmpeg && tools?.ffprobe);
   const videoAssets = assetLibrary.filter((asset) => asset.type === "video");
@@ -435,9 +498,81 @@ const MediaToolbar = ({
                           })}
                         </div>
                       </div>
+
+                      <div className="overlayPicker" aria-label="叠加素材">
+                        <span>叠加素材：</span>
+                        {transcriptAssets.map((item) => (
+                          <label key={item.path} className="overlayCheck">
+                            <input
+                              type="checkbox"
+                              checked={overlayAssets.has(item.path)}
+                              onChange={() => {
+                                setOverlayAssets((current) => {
+                                  const next = new Set(current);
+                                  if (next.has(item.path)) {
+                                    next.delete(item.path);
+                                  } else {
+                                    next.add(item.path);
+                                  }
+                                  return next.size > 0 ? next : new Set([asset.path]);
+                                });
+                              }}
+                            />
+                            {assetFileName(item.path)}
+                          </label>
+                        ))}
+                      </div>
+
+                      {Array.from(overlayAssets)
+                        .filter((path) => path !== asset.path)
+                        .map((overlayPath) => {
+                          const overlayAsset = assetLibrary.find(
+                            (item) => item.path === overlayPath,
+                          );
+                          if (!overlayAsset?.transcript) {
+                            return null;
+                          }
+                          return (
+                            <div className="subtitleAssetTrack" key={overlayPath}>
+                              <span className="subtitleAssetName">
+                                {assetFileName(overlayPath)}
+                              </span>
+                              <div className="subtitleSegmentTrack">
+                                {overlayAsset.transcript.segments.map((segment, index) => {
+                                  const left = (segment.start / totalDuration) * 100;
+                                  const width = Math.max(
+                                    2,
+                                    ((segment.end - segment.start) / totalDuration) * 100,
+                                  );
+                                  return (
+                                    <span
+                                      key={index}
+                                      className="subtitleSegmentBlock readonly"
+                                      style={{
+                                        left: left + "%",
+                                        width: width + "%",
+                                        background: "rgba(118, 118, 128, 0.45)",
+                                      }}
+                                      title={segment.text}
+                                    />
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                      {waveforms[asset.path] && asset.duration ? (
+                        <WaveformTimeline
+                          peaks={waveforms[asset.path]}
+                          assetDuration={asset.duration}
+                          totalDuration={totalDuration}
+                        />
+                      ) : null}
+
                       <p className="assetValidationNote">
-                        提示：直接拖动字幕色块到目标分镜色块；Shift
-                        点击多选后可整组拖入；下拉/键盘（Enter/空格）也可指派。
+                        提示：直接拖动当前素材的字幕色块到目标分镜色块；Shift
+                        点击多选后可整组拖入；下方"叠加素材"可对照其他素材的字幕位置，波形与字幕同时间轴对齐。
                       </p>
                       <div className="assignmentList">
                         {asset.transcript.segments.map((segment, index) => (
@@ -535,11 +670,7 @@ const MediaToolbar = ({
                         <button
                           type="button"
                           className="secondaryButton"
-                          onClick={() => {
-                            setAligning(asset.path);
-                            setAssignments(hydrateAssignments(asset.transcript?.assignments));
-                            setSelectedSegments(new Set());
-                          }}
+                          onClick={() => openAlign(asset.path)}
                         >
                           对齐字幕
                         </button>

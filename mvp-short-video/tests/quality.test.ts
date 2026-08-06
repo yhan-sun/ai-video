@@ -109,6 +109,35 @@ describe("generator: industry templates and length constraints", () => {
     expect(fitText("一二三四五六七八", 4)).toBe("一二三…");
     expect(fitText("短文本", 4)).toBe("短文本");
   });
+
+  it("injects region dialect into hooks and body", () => {
+    const guangzhou = buildTimeline(
+      { ...sampleConfig, location: "广东广州", region: "广州" },
+      sampleAssets,
+      1,
+      rules,
+    );
+    const body = guangzhou.publishCopy.body;
+    expect(body).toContain("街坊们");
+    expect(guangzhou.scenes[0]?.subtitle).toContain("老广都知道");
+
+    const northeast = buildTimeline(
+      { ...sampleConfig, location: "哈尔滨" },
+      sampleAssets,
+      1,
+      rules,
+    );
+    expect(northeast.publishCopy.body).toContain("老铁们");
+  });
+
+  it("rotates template hook variants for diversity", () => {
+    const drafts = buildDraftsDistinct(sampleConfig, sampleAssets, 10, rules).drafts;
+    const avoidMistake = drafts.filter((draft) => draft.template === "avoid-mistake");
+    if (avoidMistake.length >= 2) {
+      const hooks = new Set(avoidMistake.map((draft) => draft.scenes[0]?.headline));
+      expect(hooks.size).toBeGreaterThan(1);
+    }
+  });
 });
 
 describe("contract migration: v1 -> v2 and workspace v3 -> v4", () => {

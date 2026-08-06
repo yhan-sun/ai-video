@@ -786,6 +786,25 @@ export const useWorkspace = () => {
     [updateEdit],
   );
 
+  const applyMergeToDraft = useCallback(
+    (
+      draftId: string,
+      patch: {
+        publishCopy?: Partial<Timeline["publishCopy"]>;
+        scenes?: Record<string, SceneEdit>;
+      },
+    ) => {
+      updateEdit(draftId, (edit) =>
+        withReviewReset({
+          ...(edit ?? {}),
+          publishCopy: { ...(edit?.publishCopy ?? {}), ...patch.publishCopy },
+          scenes: { ...(edit?.scenes ?? {}), ...patch.scenes },
+        }),
+      );
+    },
+    [updateEdit],
+  );
+
   const approveAllReadyDrafts = useCallback(() => {
     setWorkspace((current) => {
       const nextEdits = { ...current.draftEdits };
@@ -2587,6 +2606,7 @@ export const useWorkspace = () => {
     canUndoSelected,
     canRedoSelected,
     toggleReviewForDraft,
+    applyMergeToDraft,
     approveAllReadyDrafts,
     llmGenerateBatch,
     llmOptimizeCurrent,

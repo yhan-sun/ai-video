@@ -2911,6 +2911,25 @@ button:disabled {
   background: var(--surface-muted);
 }
 
+.diffPanel .diffRow {
+  grid-template-columns: 88px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+}
+
+.diffRowHint {
+  color: var(--tertiary);
+  font-size: 11px;
+}
+
+.diffRowActions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.mergeButton {
+  white-space: nowrap;
+}
+
 .diffRow > span {
   font-size: 12px;
   line-height: 1.5;
@@ -3001,6 +3020,61 @@ button:disabled {
   font-size: 12px;
   line-height: 1.6;
   color: var(--label);
+}
+
+.overlayPicker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.overlayPicker > span {
+  color: var(--tertiary);
+  font-size: 11px;
+}
+
+.overlayCheck {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--secondary);
+  cursor: pointer;
+}
+
+.overlayCheck input[type="checkbox"] {
+  width: auto;
+  accent-color: var(--accent);
+}
+
+.subtitleAssetTrack {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.subtitleAssetName {
+  color: var(--tertiary);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subtitleSegmentBlock.readonly {
+  cursor: default;
+}
+
+.waveformTimeline {
+  width: 100%;
+  height: 40px;
+  margin-top: 8px;
+  border-radius: 8px;
+  background: var(--surface-2);
 }
 
 .shortcutHint {
