@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { assetSource } from "../format.ts";
 import { previewUrlFor } from "../desktop.ts";
-import { hydrateAssignments } from "../subtitles.ts";
+import { buildVoiceOverScript, hydrateAssignments } from "../subtitles.ts";
 import { assetTagOptions, sceneLabel } from "../types.ts";
 import type {
   AssetAuthorization,
@@ -68,6 +68,44 @@ const formatSize = (bytes: number) => {
   return (bytes / (1024 * 1024)).toFixed(1) + " MB";
 };
 
+const WaveformCanvas = ({ peaks }: { peaks: number[] }) => {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      return;
+    }
+    const width = canvas.width;
+    const height = canvas.height;
+    const context = canvas.getContext("2d");
+    if (!context) {
+      return;
+    }
+    context.clearRect(0, 0, width, height);
+    if (peaks.length === 0) {
+      return;
+    }
+    const barWidth = width / peaks.length;
+    context.fillStyle = "var(--accent)";
+    peaks.forEach((peak, index) => {
+      const barHeight = Math.max(2, (peak / 255) * height);
+      const y = (height - barHeight) / 2;
+      context.fillRect(index * barWidth, y, Math.max(1, barWidth - 1), barHeight);
+    });
+  }, [peaks]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={560}
+      height={48}
+      className="waveformCanvas"
+      aria-label="音频波形"
+    />
+  );
+};
+
 const MediaToolbar = ({
   tools,
   onRefresh,
@@ -78,9 +116,13 @@ const MediaToolbar = ({
   timeline,
   onStartSlice,
   onStartTranscribe,
+  onStartTranscribeTranslate,
   onApplyTranscript,
   onApplyAssignments,
   onSaveAssignments,
+  onProbeWaveform,
+  waveforms,
+  onExportText,
   onCancelMediaJob,
   onRemoveMediaJob,
 }: {
@@ -93,12 +135,16 @@ const MediaToolbar = ({
   timeline: Timeline;
   onStartSlice: (asset: AssetItem, start: number, duration: number) => void;
   onStartTranscribe: (asset: AssetItem) => void;
+  onStartTranscribeTranslate: (asset: AssetItem) => void;
   onApplyTranscript: (asset: AssetItem) => void;
   onApplyAssignments: (
     asset: AssetItem,
     assignments: Array<{ index: number; sceneId: string | null }>,
   ) => void;
   onSaveAssignments: (asset: AssetItem, assignments: Record<number, string>) => void;
+  onProbeWaveform: (asset: AssetItem) => void;
+  waveforms: Record<string, number[]>;
+  onExportText: (fileName: string, content: string) => void;
   onCancelMediaJob: (jobId: string) => void;
   onRemoveMediaJob: (jobId: string) => void;
 }) => {
@@ -109,6 +155,8 @@ const MediaToolbar = ({
   const [assignments, setAssignments] = useState<Record<number, string>>({});
   const [dragOverScene, setDragOverScene] = useState<string | null>(null);
   const [selectedSegments, setSelectedSegments] = useState<Set<number>>(new Set());
+  const [voiceoverAsset, setVoiceoverAsset] = useState<string | null>(null);
+  const [copiedScript, setCopiedScript] = useState(false);
 
   const toolsReady = Boolean(tools?.ffmpeg && tools?.ffprobe);
   const videoAssets = assetLibrary.filter((asset) => asset.type === "video");
@@ -561,7 +609,98 @@ const MediaToolbar = ({
                   >
                     转写字幕
                   </button>
+                  <button
+                    type="button"
+                    className="secondaryButton"
+                    disabled={!tools?.whisper}
+                    onClick={() => onStartTranscribeTranslate(asset)}
+                  >
+                    转写并翻译
+                  </button>
+                  <button
+                    type="button"
+                    className="secondaryButton"
+                    disabled={!toolsReady}
+                    onClick={() => {
+                      if (!waveforms[asset.path]) {
+                        onProbeWaveform(asset);
+                      }
+                    }}
+                  >
+                    {waveforms[asset.path] ? "波形已加载" : "加载波形"}
+                  </button>
                 </div>
+                {waveforms[asset.path] ? <WaveformCanvas peaks={waveforms[asset.path]} /> : null}
+                {hasTranscript ? (
+                  <div className="cardActions voiceoverActions">
+                    <button
+                      type="button"
+                      className="linkButton"
+                      onClick={() => {
+                        setVoiceoverAsset(voiceoverAsset === asset.path ? null : asset.path);
+                        setCopiedScript(false);
+                      }}
+                    >
+                      {voiceoverAsset === asset.path ? "收起口播稿" : "生成口播稿"}
+                    </button>
+                  </div>
+                ) : null}
+                {voiceoverAsset === asset.path && asset.transcript ? (
+                  <div className="voiceoverPanel">
+                    {(() => {
+                      const script = buildVoiceOverScript(timeline, asset.transcript);
+                      return (
+                        <>
+                          <div className="groupHeader">
+                            <strong>口播稿</strong>
+                            <span>按分镜窗口聚合字幕生成旁白，可复制或导出 txt。</span>
+                          </div>
+                          <div className="voiceoverScenes">
+                            {script.scenes.map((scene) => (
+                              <div className="voiceoverScene" key={scene.sceneId}>
+                                <span>
+                                  {String(scene.index + 1).padStart(2, "0")}{" "}
+                                  {
+                                    sceneLabel[
+                                      timeline.scenes.find((item) => item.id === scene.sceneId)
+                                        ?.type ?? "hook"
+                                    ]
+                                  }
+                                </span>
+                                <p>{scene.text}</p>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="cardActions">
+                            <button
+                              type="button"
+                              className="secondaryButton"
+                              onClick={() => {
+                                void navigator.clipboard
+                                  .writeText(script.full)
+                                  .then(() => setCopiedScript(true));
+                              }}
+                            >
+                              {copiedScript ? "已复制" : "复制全文"}
+                            </button>
+                            <button
+                              type="button"
+                              className="secondaryButton"
+                              onClick={() =>
+                                onExportText(
+                                  "voiceover-" + asset.fileName.replace(/\.[^.]+$/, "") + ".txt",
+                                  script.full,
+                                )
+                              }
+                            >
+                              导出 txt
+                            </button>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                ) : null}
               </article>
             );
           })}
@@ -594,9 +733,13 @@ export const AssetLibraryPanel = ({
   onImportDesktop,
   onStartSlice,
   onStartTranscribe,
+  onStartTranscribeTranslate,
   onApplyTranscript,
   onApplyAssignments,
   onSaveAssignments,
+  onProbeWaveform,
+  waveforms,
+  onExportText,
   onCancelMediaJob,
   onRemoveMediaJob,
   onToggleAssetTag,
@@ -627,12 +770,16 @@ export const AssetLibraryPanel = ({
   onImportDesktop: () => void;
   onStartSlice: (asset: AssetItem, start: number, duration: number) => void;
   onStartTranscribe: (asset: AssetItem) => void;
+  onStartTranscribeTranslate: (asset: AssetItem) => void;
   onApplyTranscript: (asset: AssetItem) => void;
   onApplyAssignments: (
     asset: AssetItem,
     assignments: Array<{ index: number; sceneId: string | null }>,
   ) => void;
   onSaveAssignments: (asset: AssetItem, assignments: Record<number, string>) => void;
+  onProbeWaveform: (asset: AssetItem) => void;
+  waveforms: Record<string, number[]>;
+  onExportText: (fileName: string, content: string) => void;
   onCancelMediaJob: (jobId: string) => void;
   onRemoveMediaJob: (jobId: string) => void;
   onToggleAssetTag: (asset: string, tag: AssetTag) => void;
@@ -800,9 +947,13 @@ export const AssetLibraryPanel = ({
           timeline={selected}
           onStartSlice={onStartSlice}
           onStartTranscribe={onStartTranscribe}
+          onStartTranscribeTranslate={onStartTranscribeTranslate}
           onApplyTranscript={onApplyTranscript}
           onApplyAssignments={onApplyAssignments}
           onSaveAssignments={onSaveAssignments}
+          onProbeWaveform={onProbeWaveform}
+          waveforms={waveforms}
+          onExportText={onExportText}
           onCancelMediaJob={onCancelMediaJob}
           onRemoveMediaJob={onRemoveMediaJob}
         />

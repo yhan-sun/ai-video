@@ -3,6 +3,7 @@ import {
   assignmentSummary,
   buildAssignedSubtitlePatch,
   buildSubtitleScenePatch,
+  buildVoiceOverScript,
   hydrateAssignments,
   serializeAssignments,
   subtitlesForScenes,
@@ -238,5 +239,47 @@ describe("subtitle source consistency", () => {
     });
     const check = analysis.checks.find((item) => item.label === "字幕来源素材");
     expect(check?.severity).toBe("success");
+  });
+});
+
+describe("voiceover script", () => {
+  const draft = buildTimeline(sampleConfig, sampleAssets, 0);
+
+  it("builds per-scene narration and a full script", () => {
+    const script = buildVoiceOverScript(draft, transcript);
+    expect(script.scenes.length).toBe(draft.scenes.length);
+    expect(script.scenes[0].text).toContain("第一次来大理");
+    expect(script.full).toContain("1. ");
+    expect(script.full).toContain(script.scenes[script.scenes.length - 1].text);
+    expect(script.scenes.every((scene) => scene.text.length <= 61)).toBe(true);
+  });
+
+  it("supports translated segments as input", () => {
+    const translated: Transcript = {
+      language: "en",
+      translatedLanguage: "en",
+      segments: [
+        { start: 0, end: 3, text: "Welcome to Dali" },
+        { start: 3, end: 6, text: "Do not rush" },
+      ],
+    };
+    const script = buildVoiceOverScript(draft, translated);
+    expect(script.scenes[0].text).toContain("Welcome to Dali");
+  });
+});
+
+describe("translated transcript schema", () => {
+  it("keeps translatedLanguage and translatedSegments schema-valid", () => {
+    const parsed = TranscriptSchema.safeParse({
+      ...transcript,
+      translatedLanguage: "en",
+      translatedSegments: [
+        { start: 0, end: 2.5, text: "First time in Dali" },
+        { start: 2.5, end: 5, text: "Do not just look at recommendations" },
+      ],
+    });
+    expect(parsed.success).toBe(true);
+    expect(parsed.success && parsed.data.translatedSegments).toHaveLength(2);
+    expect(parsed.success && parsed.data.translatedLanguage).toBe("en");
   });
 });

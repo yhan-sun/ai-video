@@ -185,6 +185,7 @@ export type MediaTranscribeResult = {
   model?: string;
   segments: Array<{ start: number; end: number; text: string }>;
   srtPath?: string;
+  translated?: boolean;
 };
 
 export const mediaTools = async (): Promise<MediaToolsInfo> => {
@@ -210,8 +211,14 @@ export const mediaTranscribe = async (job: {
   inputPath: string;
   outputName: string;
   model?: string;
+  translate?: boolean;
 }): Promise<MediaTranscribeResult> => {
   return invoke("media_transcribe", { job });
+};
+
+export const mediaWaveform = async (path: string): Promise<number[] | null> => {
+  const peaks = await invoke<number[] | null>("media_waveform", { path });
+  return peaks;
 };
 
 export const mediaCancel = async (jobId: string): Promise<boolean> => {

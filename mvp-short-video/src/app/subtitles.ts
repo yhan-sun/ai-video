@@ -200,3 +200,34 @@ export const assignmentSummary = (assignments: Record<number, string>, segmentCo
   const excluded = Object.values(assignments).filter((sceneId) => sceneId === "").length;
   return { assigned, excluded, auto: Math.max(0, segmentCount - assigned - excluded) };
 };
+
+export type VoiceOverSegment = {
+  sceneId: string;
+  index: number;
+  text: string;
+  segments: TranscriptSegment[];
+};
+
+export type VoiceOverScript = {
+  scenes: VoiceOverSegment[];
+  full: string;
+};
+
+/** 生成口播稿：按分镜时间窗口聚合字幕为连贯旁白（每分镜一段 + 全文）。 */
+export const buildVoiceOverScript = (
+  timeline: Timeline,
+  transcript: Transcript,
+  options: { maxChars?: number } = {},
+): VoiceOverScript => {
+  const plans = subtitlesForScenes(timeline, transcript, options);
+  const scenes: VoiceOverSegment[] = plans.map((plan, index) => ({
+    sceneId: plan.sceneId,
+    index,
+    text: plan.text,
+    segments: plan.segments,
+  }));
+  return {
+    scenes,
+    full: scenes.map((scene, index) => `${index + 1}. ${scene.text}`).join("\n\n"),
+  };
+};

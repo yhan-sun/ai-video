@@ -2954,6 +2954,55 @@ button:disabled {
   flex-wrap: wrap;
 }
 
+.waveformCanvas {
+  width: 100%;
+  height: 48px;
+  margin-top: 8px;
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.voiceoverActions {
+  margin-top: 6px;
+}
+
+.voiceoverPanel {
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: var(--surface-1);
+}
+
+.voiceoverScenes {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.voiceoverScene {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.voiceoverScene > span {
+  color: var(--tertiary);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  padding-top: 2px;
+}
+
+.voiceoverScene p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--label);
+}
+
 .shortcutHint {
   margin: 10px 2px 0;
   color: var(--tertiary);

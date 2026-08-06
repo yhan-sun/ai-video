@@ -803,7 +803,8 @@ pub fn run() {
             media_probe,
             media_slice,
             media_transcribe,
-            media_cancel
+            media_cancel,
+            media_waveform
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -847,6 +848,7 @@ struct MediaTranscribeJob {
     input_path: String,
     output_name: String,
     model: Option<String>,
+    translate: Option<bool>,
 }
 
 #[derive(Serialize, Clone)]
@@ -873,6 +875,7 @@ struct MediaTranscribeResult {
     model: Option<String>,
     segments: Vec<TranscriptSegment>,
     srt_path: Option<String>,
+    translated: bool,
 }
 
 fn detect_binary(names: &[&str]) -> Option<String> {
@@ -1167,6 +1170,7 @@ async fn media_transcribe(
     let stem = safe_file_stem(&job.output_name);
     let wav_path = work_dir.join(format!("{stem}.wav"));
     let out_prefix = work_dir.join(format!("{stem}-whisper"));
+    let translate = job.translate.unwrap_or(false);
 
     // 1) 提取 16k 单声道 wav。
     let mut audio_command = tokio::process::Command::new(&ffmpeg);
@@ -1199,6 +1203,9 @@ async fn media_transcribe(
         .arg("-oj")
         .arg("-of")
         .arg(&out_prefix);
+    if translate {
+        whisper_command.arg("-tr");
+    }
     let whisper_child = spawn_media_job(&state, &job.id, &mut whisper_command).await?;
     let whisper_ok = stream_media_logs(&app, &event, whisper_child, &state, &job.id).await?;
     if !whisper_ok {
@@ -1243,6 +1250,7 @@ async fn media_transcribe(
         model: job.model,
         segments,
         srt_path: Some(srt_path.to_string_lossy().to_string()),
+        translated: translate,
     })
 }
 
@@ -1296,6 +1304,73 @@ async fn media_cancel(state: State<'_, MediaState>, job_id: String) -> Result<bo
     } else {
         Ok(false)
     }
+}
+
+/// 提取音频波形：ffmpeg 输出 4kHz 单声道 s16le，在 Rust 侧降采样为 160 个峰值桶，
+/// 返回 byte 数组（前端直接绘制，无需解码音频）。
+#[tauri::command]
+async fn media_waveform(app: AppHandle, path: String) -> Result<Option<Vec<u8>>, String> {
+    let ffmpeg = detect_binary(&["ffmpeg"]);
+    let Some(ffmpeg) = ffmpeg else {
+        return Err("未检测到 ffmpeg，请先安装 FFmpeg。".to_string());
+    };
+    let _ = &app;
+    if !tokio::fs::try_exists(&path).await.unwrap_or(false) {
+        return Ok(None);
+    }
+
+    let output = tokio::task::spawn_blocking(move || {
+        std::process::Command::new(&ffmpeg)
+            .args([
+                "-v",
+                "error",
+                "-i",
+                &path,
+                "-ac",
+                "1",
+                "-ar",
+                "4000",
+                "-f",
+                "s16le",
+                "pipe:1",
+            ])
+            .output()
+            .map_err(|error| "ffmpeg 执行失败：".to_string() + &error.to_string())
+    })
+    .await
+    .map_err(|error| "波形任务失败：".to_string() + &error.to_string())??;
+
+    if !output.status.success() {
+        return Ok(None);
+    }
+    if output.stdout.len() < 4 {
+        return Ok(None);
+    }
+
+    const BUCKETS: usize = 160;
+    let samples: Vec<i16> = output
+        .stdout
+        .chunks_exact(2)
+        .map(|chunk| i16::from_le_bytes([chunk[0], chunk[1]]))
+        .collect();
+    if samples.is_empty() {
+        return Ok(None);
+    }
+
+    let peaks: Vec<u8> = (0..BUCKETS)
+        .map(|bucket| {
+            let start = (bucket * samples.len()) / BUCKETS;
+            let end = (((bucket + 1) * samples.len()) / BUCKETS).max(start + 1);
+            let max = samples[start..end]
+                .iter()
+                .map(|sample| sample.unsigned_abs())
+                .max()
+                .unwrap_or(0);
+            ((max as f32 / 32768.0) * 255.0).round() as u8
+        })
+        .collect();
+
+    Ok(Some(peaks))
 }
 
 #[cfg(test)]

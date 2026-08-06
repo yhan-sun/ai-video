@@ -105,6 +105,8 @@ export const TranscriptSchema = z.object({
   model: z.string().optional(),
   segments: z.array(TranscriptSegmentSchema).default([]),
   assignments: z.array(TranscriptAssignmentSchema).default([]),
+  translatedLanguage: z.string().optional(),
+  translatedSegments: z.array(TranscriptSegmentSchema).optional(),
 });
 
 export const SourceClipSchema = z.object({

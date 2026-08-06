@@ -454,12 +454,18 @@ export const App = () => {
               workspace.startSlice(asset.path, start, duration)
             }
             onStartTranscribe={(asset) => workspace.startTranscribe(asset.path)}
+            onStartTranscribeTranslate={(asset) => workspace.startTranscribe(asset.path, true)}
             onApplyTranscript={(asset) => workspace.applyTranscriptToDraft(asset.path)}
             onApplyAssignments={(asset, assignments) =>
               workspace.applyTranscriptAssignments(asset.path, assignments)
             }
             onSaveAssignments={(asset, assignments) =>
               workspace.saveTranscriptAssignments(asset.path, assignments)
+            }
+            onProbeWaveform={(asset) => void workspace.probeWaveform(asset.path)}
+            waveforms={workspace.waveforms}
+            onExportText={(fileName, content) =>
+              void saveOrDownload(fileName, content, downloadTextFile)
             }
             onCancelMediaJob={workspace.cancelMediaJob}
             onRemoveMediaJob={workspace.removeMediaJob}

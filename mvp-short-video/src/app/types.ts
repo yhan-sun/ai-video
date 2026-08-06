@@ -192,6 +192,7 @@ export type MediaJobState = {
   error?: string;
   start?: number;
   duration?: number;
+  translate?: boolean;
 };
 
 export type ImportedAsset = {

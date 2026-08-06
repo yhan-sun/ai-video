@@ -63,6 +63,7 @@ import {
   mediaSlice,
   mediaTools,
   mediaTranscribe,
+  mediaWaveform,
   onMediaEvent,
   onRenderEvent,
   pickAssetFiles as desktopPickAssetFiles,
@@ -1352,6 +1353,7 @@ export const useWorkspace = () => {
             id: job.id,
             inputPath: absolute,
             outputName: stem,
+            translate: job.translate,
           });
           setWorkspace((current) => {
             const meta = current.assetMeta[job.assetPath];
@@ -1368,7 +1370,13 @@ export const useWorkspace = () => {
                     language: result.language,
                     model: result.model,
                     segments: result.segments,
-                    assignments: [],
+                    assignments: meta.transcript?.assignments ?? [],
+                    ...(result.translated
+                      ? {
+                          translatedLanguage: "en",
+                          translatedSegments: result.segments,
+                        }
+                      : {}),
                   },
                 },
               },
@@ -1377,7 +1385,8 @@ export const useWorkspace = () => {
           setNotice({
             kind: "info",
             message:
-              "转写完成：" +
+              (result.translated ? "翻译" : "转写") +
+              "完成：" +
               result.segments.length +
               " 条字幕（" +
               (result.language ?? "未知语言") +
@@ -1590,18 +1599,42 @@ export const useWorkspace = () => {
   );
 
   const startTranscribe = useCallback(
-    (assetPath: string) => {
+    (assetPath: string, translate = false) => {
       const job: MediaJobState = {
         id: createId(),
         kind: "transcribe",
         assetPath,
         status: "idle",
         log: [],
+        translate,
       };
       setMediaJobs((current) => ({ ...current, [job.id]: job }));
       void runMediaJob(job);
     },
     [runMediaJob],
+  );
+
+  const [waveforms, setWaveforms] = useState<Record<string, number[]>>({});
+
+  const probeWaveform = useCallback(
+    async (assetPath: string) => {
+      if (!isDesktop()) {
+        return null;
+      }
+      if (waveforms[assetPath]) {
+        return waveforms[assetPath];
+      }
+      const absolute = await resolveAssetPath(assetPath);
+      if (!absolute) {
+        return null;
+      }
+      const peaks = await mediaWaveform(absolute);
+      if (peaks) {
+        setWaveforms((current) => ({ ...current, [assetPath]: peaks }));
+      }
+      return peaks;
+    },
+    [waveforms],
   );
 
   const applyAIEditItem = useCallback(
@@ -2567,6 +2600,8 @@ export const useWorkspace = () => {
     refreshMediaTools,
     probeAsset,
     probeInfo,
+    probeWaveform,
+    waveforms,
     mediaJobs,
     startSlice,
     startTranscribe,
