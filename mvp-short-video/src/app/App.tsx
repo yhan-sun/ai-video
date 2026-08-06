@@ -5,7 +5,7 @@ import { createDraftJson, downloadTextFile } from "./format.ts";
 import { isDesktop, saveOrDownload } from "./desktop.ts";
 import { WindowChrome } from "./components/WindowChrome.tsx";
 import { navGroups, type WorkspaceView } from "./types.ts";
-import { Sidebar } from "./components/Sidebar.tsx";
+import { Sidebar, type ThemeMode } from "./components/Sidebar.tsx";
 import { Topbar, StatusStrip, MigrationNotice } from "./components/Topbar.tsx";
 import { DraftListPanel } from "./components/DraftList.tsx";
 import { DraftDiffPanel } from "./components/DraftDiff.tsx";
@@ -25,6 +25,48 @@ export const App = () => {
   const [forceExport, setForceExport] = useState(false);
   const [projects, setProjects] = useState<ProjectMeta[]>([]);
   const [diffIndexes, setDiffIndexes] = useState<number[]>([0, 1]);
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
+    try {
+      const saved = window.localStorage.getItem("clips-theme");
+      return saved === "light" || saved === "dark" ? saved : "auto";
+    } catch {
+      return "auto";
+    }
+  });
+
+  useEffect(() => {
+    const applyTheme = (mode: ThemeMode) => {
+      const root = document.documentElement;
+      if (mode === "auto") {
+        delete root.dataset.theme;
+      } else {
+        root.dataset.theme = mode;
+      }
+      try {
+        window.localStorage.setItem("clips-theme", mode);
+      } catch {
+        // Ignore storage failures; theme still applies for this session.
+      }
+    };
+    applyTheme(themeMode);
+    if (typeof window.matchMedia !== "function") {
+      return undefined;
+    }
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const update = () => {
+      if (themeMode === "auto") {
+        delete document.documentElement.dataset.theme;
+      }
+    };
+    mediaQuery.addEventListener?.("change", update);
+    return () => mediaQuery.removeEventListener?.("change", update);
+  }, [themeMode]);
+
+  const toggleTheme = useCallback(() => {
+    setThemeMode((current) =>
+      current === "auto" ? "light" : current === "light" ? "dark" : "auto",
+    );
+  }, []);
 
   const refreshProjects = useCallback(() => {
     void workspace.listProjects().then((list) => setProjects(list));
@@ -637,6 +679,8 @@ export const App = () => {
           totalCount={drafts.length}
           onNavigate={(view) => setActiveView(view)}
           onClearWorkspace={clearWorkspace}
+          themeMode={themeMode}
+          onToggleTheme={toggleTheme}
         />
 
         <main className="mainSurface">

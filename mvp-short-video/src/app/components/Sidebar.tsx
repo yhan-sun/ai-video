@@ -2,6 +2,8 @@ import { navGroups } from "../types.ts";
 import type { WorkspaceView } from "../types.ts";
 import { StatusBadge } from "./ui.tsx";
 
+export type ThemeMode = "auto" | "light" | "dark";
+
 export const Sidebar = ({
   activeView,
   draftCount,
@@ -12,8 +14,10 @@ export const Sidebar = ({
   industry,
   visibleCount,
   totalCount,
+  themeMode,
   onNavigate,
   onClearWorkspace,
+  onToggleTheme,
 }: {
   activeView: WorkspaceView;
   draftCount: number;
@@ -24,8 +28,10 @@ export const Sidebar = ({
   industry: string;
   visibleCount: number;
   totalCount: number;
+  themeMode: ThemeMode;
   onNavigate: (view: WorkspaceView) => void;
   onClearWorkspace: () => void;
+  onToggleTheme: () => void;
 }) => (
   <aside className="sidebar" aria-label="产品导航">
     <div className="brand">
@@ -86,21 +92,31 @@ export const Sidebar = ({
     <div className="sidebarFooter">
       <StatusBadge tone="info">本地优先</StatusBadge>
       <span>配置、草稿修改、历史版本会自动保存在本机浏览器。</span>
-      <button
-        className="linkButton subtleAction"
-        type="button"
-        onClick={() => {
-          if (
-            window.confirm(
-              "清除本地记录会删除本机保存的工作区、草稿编辑和历史版本（当前页面状态保留）。确定继续？",
-            )
-          ) {
-            onClearWorkspace();
-          }
-        }}
-      >
-        清除本地记录
-      </button>
+      <div className="sidebarThemeRow">
+        <button
+          type="button"
+          className="linkButton subtleAction"
+          onClick={onToggleTheme}
+          aria-label="切换外观模式"
+        >
+          外观：{themeMode === "auto" ? "自动" : themeMode === "light" ? "浅色" : "深色"}
+        </button>
+        <button
+          className="linkButton subtleAction"
+          type="button"
+          onClick={() => {
+            if (
+              window.confirm(
+                "清除本地记录会删除本机保存的工作区、草稿编辑和历史版本（当前页面状态保留）。确定继续？",
+              )
+            ) {
+              onClearWorkspace();
+            }
+          }}
+        >
+          清除本地记录
+        </button>
+      </div>
     </div>
   </aside>
 );

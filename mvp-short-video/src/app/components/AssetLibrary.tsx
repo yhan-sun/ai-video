@@ -73,6 +73,9 @@ const formatSize = (bytes: number) => {
   return (bytes / (1024 * 1024)).toFixed(1) + " MB";
 };
 
+const accentColor = () =>
+  getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#007aff";
+
 const WaveformCanvas = ({ peaks }: { peaks: number[] }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -92,7 +95,7 @@ const WaveformCanvas = ({ peaks }: { peaks: number[] }) => {
       return;
     }
     const barWidth = width / peaks.length;
-    context.fillStyle = "var(--accent)";
+    context.fillStyle = accentColor();
     peaks.forEach((peak, index) => {
       const barHeight = Math.max(2, (peak / 255) * height);
       const y = (height - barHeight) / 2;
@@ -140,7 +143,7 @@ const WaveformTimeline = ({
     }
     const bucketSeconds = assetDuration / peaks.length;
     const pxPerSecond = width / totalDuration;
-    context.fillStyle = "var(--accent)";
+    context.fillStyle = accentColor();
     peaks.forEach((peak, index) => {
       const startX = index * bucketSeconds * pxPerSecond;
       const barWidth = Math.max(1, bucketSeconds * pxPerSecond - 1);

@@ -2724,6 +2724,13 @@ button:disabled {
   background: var(--surface-muted);
 }
 
+.sidebarThemeRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .subtitleSourceTag {
   display: block;
   margin-top: 4px;
@@ -3603,4 +3610,158 @@ select:focus {
 
 .emptyMini {
   border-radius: 8px;
+}
+
+/* ============================================================
+   深色模式：跟随系统（默认）+ 手动强制（html[data-theme]）
+   ============================================================ */
+
+:root {
+  --code-bg: #2c2c2e;
+  --code-fg: #f5f5f7;
+  --phone-bg: #1c1c1e;
+  --backdrop: rgba(10, 12, 16, 0.35);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --window: #1e1e20;
+  --chrome: #232326;
+  --sidebar: #1b1b1d;
+  --surface: #2a2a2d;
+  --surface-muted: #232326;
+  --surface-1: #2a2a2d;
+  --surface-2: rgba(255, 255, 255, 0.08);
+  --hairline: rgba(255, 255, 255, 0.1);
+  --line: rgba(255, 255, 255, 0.14);
+  --line-soft: rgba(255, 255, 255, 0.08);
+  --label: #f5f5f7;
+  --secondary: rgba(235, 235, 245, 0.72);
+  --tertiary: rgba(235, 235, 245, 0.46);
+  --fill: rgba(255, 255, 255, 0.08);
+  --fill-hover: rgba(255, 255, 255, 0.13);
+  --accent: #0a84ff;
+  --accent-soft: rgba(10, 132, 255, 0.2);
+  --accent-press: #409cff;
+  --accent-strong: #409cff;
+  --success: #32d74b;
+  --success-soft: rgba(48, 209, 88, 0.18);
+  --warning: #ff9f0a;
+  --warning-soft: rgba(255, 159, 10, 0.2);
+  --danger: #ff453a;
+  --danger-soft: rgba(255, 69, 58, 0.2);
+  --code-bg: #1c1c1e;
+  --code-fg: #d6d6da;
+  --phone-bg: #111113;
+  --backdrop: rgba(0, 0, 0, 0.5);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --window: #1e1e20;
+    --chrome: #232326;
+    --sidebar: #1b1b1d;
+    --surface: #2a2a2d;
+    --surface-muted: #232326;
+    --surface-1: #2a2a2d;
+    --surface-2: rgba(255, 255, 255, 0.08);
+    --hairline: rgba(255, 255, 255, 0.1);
+    --line: rgba(255, 255, 255, 0.14);
+    --line-soft: rgba(255, 255, 255, 0.08);
+    --label: #f5f5f7;
+    --secondary: rgba(235, 235, 245, 0.72);
+    --tertiary: rgba(235, 235, 245, 0.46);
+    --fill: rgba(255, 255, 255, 0.08);
+    --fill-hover: rgba(255, 255, 255, 0.13);
+    --accent: #0a84ff;
+    --accent-soft: rgba(10, 132, 255, 0.2);
+    --accent-press: #409cff;
+    --accent-strong: #409cff;
+    --success: #32d74b;
+    --success-soft: rgba(48, 209, 88, 0.18);
+    --warning: #ff9f0a;
+    --warning-soft: rgba(255, 159, 10, 0.2);
+    --danger: #ff453a;
+    --danger-soft: rgba(255, 69, 58, 0.2);
+    --code-bg: #1c1c1e;
+    --code-fg: #d6d6da;
+    --phone-bg: #111113;
+    --backdrop: rgba(0, 0, 0, 0.5);
+  }
+}
+
+/* 硬编码颜色 token 化（浅色/深色通用） */
+.runbookGrid code,
+.commandRows code,
+.exportJsonPreview pre {
+  background: var(--code-bg);
+  color: var(--code-fg);
+}
+
+.phoneCanvas {
+  background: var(--phone-bg);
+}
+
+.phonePlaceholder {
+  background: var(--phone-bg);
+}
+
+.assetThumb {
+  background: var(--phone-bg);
+}
+
+.brandMark {
+  background: var(--fill);
+  color: var(--secondary);
+}
+
+.sidebarPanel {
+  background: var(--surface-muted);
+}
+
+.workspaceStatusStrip button:hover {
+  background: var(--fill);
+}
+
+.draftRow:hover {
+  background: var(--fill);
+}
+
+.draftRow.selected {
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.globalSearch span,
+.searchField span {
+  background: var(--fill);
+}
+
+.assetFileStatus {
+  background: var(--backdrop);
+  color: #f5f5f7;
+}
+
+.inspectorBackdrop {
+  background: var(--backdrop);
+}
+
+.errorBoundary {
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.25);
+}
+
+/* 检查器容器查询：抽屉窄时预览/编辑单列（替代固定双列挤压） */
+.inspectorColumn {
+  container-type: inline-size;
+}
+
+@container (max-width: 660px) {
+  .inspectorColumn .inspectorLayout {
+    grid-template-columns: 1fr;
+  }
 }
