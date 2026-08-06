@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#0ea5e9"/>
+      <stop offset=".52" stop-color="#bbf7d0"/>
+      <stop offset="1" stop-color="#052e16"/>
+    </linearGradient>
+  </defs>
+  <rect width="1080" height="1920" fill="url(#bg)"/>
+  <circle cx="200" cy="230" r="90" fill="#fef3c7"/>
+  <path d="M0 690 C260 560 360 640 560 500 C760 360 890 440 1080 330 L1080 1920 L0 1920 Z" fill="#1e293b" opacity=".38"/>
+  <rect x="120" y="760" width="840" height="540" rx="42" fill="#fefce8" opacity=".98"/>
+  <rect x="190" y="840" width="700" height="140" rx="22" fill="#92400e"/>
+  <rect x="190" y="1010" width="700" height="170" rx="26" fill="#451a03" opacity=".9"/>
+  <rect x="270" y="1260" width="540" height="160" rx="80" fill="#92400e"/>
+  <rect x="350" y="1210" width="380" height="100" rx="50" fill="#fef3c7"/>
+  <path d="M0 1420 C220 1350 380 1410 550 1340 C720 1270 880 1345 1080 1260 L1080 1920 L0 1920 Z" fill="#166534"/>
+  <circle cx="130" cy="1320" r="120" fill="#15803d"/>
+  <circle cx="910" cy="1320" r="148" fill="#22c55e"/>
+  <text x="88" y="1640" fill="#ffffff" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="66" font-weight="900">院子可以喝茶看云</text>
+  <text x="92" y="1720" fill="#dcfce7" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="34">白天出门方便，晚上安静休息</text>
+</svg>

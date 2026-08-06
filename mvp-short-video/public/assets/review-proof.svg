@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920">
+  <defs>
+    <linearGradient id="proofBg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#111827"/>
+      <stop offset="1" stop-color="#4c1d95"/>
+    </linearGradient>
+  </defs>
+  <rect width="1080" height="1920" fill="url(#proofBg)"/>
+  <circle cx="860" cy="240" r="190" fill="#a78bfa" opacity=".32"/>
+  <circle cx="180" cy="1520" r="260" fill="#60a5fa" opacity=".25"/>
+  <rect x="110" y="360" width="860" height="280" rx="44" fill="#ffffff" opacity=".96"/>
+  <rect x="110" y="740" width="860" height="280" rx="44" fill="#ffffff" opacity=".9"/>
+  <rect x="110" y="1120" width="860" height="280" rx="44" fill="#ffffff" opacity=".84"/>
+  <text x="170" y="455" fill="#111827" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="42" font-weight="900">“晚上很安静，停车也方便”</text>
+  <text x="170" y="535" fill="#475569" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="30">亲子游客 · 真实评价</text>
+  <text x="170" y="835" fill="#111827" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="42" font-weight="900">“老板给的路线很省心”</text>
+  <text x="170" y="915" fill="#475569" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="30">情侣游客 · 真实评价</text>
+  <text x="170" y="1215" fill="#111827" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="42" font-weight="900">“离古城近，但不吵”</text>
+  <text x="170" y="1295" fill="#475569" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="30">周末出游 · 真实评价</text>
+  <text x="110" y="1660" fill="#ffffff" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="62" font-weight="900">证据比口号更有转化</text>
+</svg>

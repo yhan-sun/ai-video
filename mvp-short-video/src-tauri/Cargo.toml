@@ -1,0 +1,21 @@
+[package]
+name = "clips-studio"
+version = "0.1.0"
+description = "本地商家 AI 短视频草稿工作台（Tauri 桌面端）"
+edition = "2021"
+
+[lib]
+name = "clips_studio_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["protocol-asset", "macos-private-api"] }
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+tokio = { version = "1", features = ["process", "fs", "io-util", "macros", "sync", "time"] }
+rusqlite = { version = "0.32", features = ["bundled"] }

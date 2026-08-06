@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920">
+  <rect width="1080" height="1920" fill="#eff6ff"/>
+  <path d="M110 250 H970 V1560 H110 Z" fill="#ffffff" stroke="#bfdbfe" stroke-width="10"/>
+  <path d="M240 1360 C260 1120 410 1040 500 900 C610 730 510 600 740 430" fill="none" stroke="#2563eb" stroke-width="34" stroke-linecap="round" stroke-dasharray="12 54"/>
+  <circle cx="240" cy="1360" r="52" fill="#ef4444"/>
+  <circle cx="500" cy="900" r="52" fill="#f59e0b"/>
+  <circle cx="740" cy="430" r="52" fill="#22c55e"/>
+  <rect x="170" y="170" width="740" height="110" rx="28" fill="#1d4ed8"/>
+  <text x="220" y="242" fill="#ffffff" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="42" font-weight="900">大理 3 天不踩坑路线</text>
+  <rect x="170" y="1490" width="740" height="210" rx="34" fill="#dbeafe"/>
+  <text x="220" y="1570" fill="#1e3a8a" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="40" font-weight="900">住宿区域 / 拍照点 / 吃饭建议</text>
+  <text x="220" y="1640" fill="#1d4ed8" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="32">评论区回复“大理”领取</text>
+</svg>

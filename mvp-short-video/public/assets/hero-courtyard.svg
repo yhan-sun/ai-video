@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920">
+  <defs>
+    <linearGradient id="sky" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#8ec5ff"/>
+      <stop offset="0.55" stop-color="#f7d7a4"/>
+      <stop offset="1" stop-color="#17324d"/>
+    </linearGradient>
+    <linearGradient id="wall" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#fff7ed"/>
+      <stop offset="1" stop-color="#fed7aa"/>
+    </linearGradient>
+  </defs>
+  <rect width="1080" height="1920" fill="url(#sky)"/>
+  <circle cx="850" cy="260" r="130" fill="#fff7b2" opacity=".9"/>
+  <path d="M0 760 C240 620 410 690 610 560 C820 424 920 500 1080 420 L1080 1920 L0 1920 Z" fill="#334155" opacity=".35"/>
+  <rect x="110" y="720" width="860" height="760" rx="38" fill="url(#wall)"/>
+  <path d="M80 780 L540 470 L1000 780 Z" fill="#7c2d12"/>
+  <path d="M160 830 L540 586 L920 830 Z" fill="#9a3412"/>
+  <rect x="230" y="920" width="190" height="260" rx="24" fill="#0f172a" opacity=".82"/>
+  <rect x="660" y="920" width="190" height="260" rx="24" fill="#0f172a" opacity=".82"/>
+  <rect x="458" y="1020" width="164" height="460" rx="24" fill="#78350f"/>
+  <path d="M0 1370 C210 1280 330 1360 520 1300 C710 1240 850 1310 1080 1210 L1080 1920 L0 1920 Z" fill="#14532d"/>
+  <circle cx="178" cy="1330" r="118" fill="#166534"/>
+  <circle cx="940" cy="1320" r="140" fill="#15803d"/>
+  <text x="80" y="1680" fill="#ffffff" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="68" font-weight="900">大理云上小院</text>
+  <text x="84" y="1760" fill="#dbeafe" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="34">安静小院 · 古城附近 · 适合慢旅行</text>
+</svg>

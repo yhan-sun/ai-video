@@ -1,0 +1,183 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+}
+
+.video {
+  background: #101014;
+  color: #ffffff;
+  overflow: hidden;
+}
+
+.scene-media {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(1.06) contrast(1.04);
+}
+
+.fallback-bg {
+  background:
+    radial-gradient(
+      circle at 20% 10%,
+      color-mix(in srgb, var(--accent) 45%, transparent),
+      transparent 32%
+    ),
+    radial-gradient(circle at 80% 24%, rgba(255, 255, 255, 0.18), transparent 28%),
+    linear-gradient(135deg, #101014 0%, #221b33 48%, #111827 100%);
+}
+
+.orb {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(10px);
+  opacity: 0.8;
+}
+
+.orb-one {
+  width: 420px;
+  height: 420px;
+  left: 80px;
+  top: 220px;
+  background: var(--accent);
+}
+
+.orb-two {
+  width: 520px;
+  height: 520px;
+  right: -120px;
+  bottom: 180px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.texture {
+  position: absolute;
+  inset: 0;
+  opacity: 0.18;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 44px 44px;
+  transform: rotate(-6deg) scale(1.2);
+}
+
+.scrim {
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.45), transparent 28%),
+    linear-gradient(0deg, rgba(0, 0, 0, 0.86), transparent 62%), rgba(0, 0, 0, 0.18);
+}
+
+.media-failed {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 34px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+}
+
+.topbar {
+  position: absolute;
+  top: 74px;
+  left: 64px;
+  right: 64px;
+  display: flex;
+  justify-content: space-between;
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 34px;
+  letter-spacing: 0.08em;
+}
+
+.progress {
+  position: absolute;
+  top: 136px;
+  left: 64px;
+  right: 64px;
+  display: grid;
+  grid-auto-flow: column;
+  gap: 12px;
+}
+
+.progress span {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.26);
+}
+
+.progress span.active {
+  background: #ffffff;
+}
+
+.copy-block {
+  position: absolute;
+  left: 64px;
+  right: 64px;
+  bottom: 330px;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  height: 58px;
+  padding: 0 28px;
+  border-radius: 999px;
+  color: #111111;
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  box-shadow: 0 14px 50px rgba(0, 0, 0, 0.28);
+}
+
+h1 {
+  margin: 30px 0 0;
+  font-size: 92px;
+  line-height: 1.08;
+  letter-spacing: -0.05em;
+  text-wrap: balance;
+  text-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+}
+
+p {
+  margin: 26px 0 0;
+  max-width: 860px;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 42px;
+  line-height: 1.35;
+  font-weight: 650;
+}
+
+.merchant-card {
+  position: absolute;
+  left: 64px;
+  right: 64px;
+  bottom: 84px;
+  padding: 34px 36px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 34px;
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 18px 80px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(20px);
+}
+
+.merchant-card strong {
+  display: block;
+  font-size: 38px;
+  line-height: 1.2;
+}
+
+.merchant-card span {
+  display: block;
+  margin-top: 10px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 27px;
+  line-height: 1.35;
+}

@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 2,
+  "draftId": "draft-avoid-mistake-v0",
+  "title": "大理云上小院 - 避坑型短视频草稿",
+  "template": "avoid-mistake",
+  "format": "9:16",
+  "fps": 30,
+  "width": 1080,
+  "height": 1920,
+  "merchant": {
+    "name": "大理云上小院",
+    "industry": "民宿",
+    "location": "云南大理",
+    "audience": "第一次来大理的情侣和亲子游客",
+    "offer": "评论区回复“大理”，领取 3 天不踩坑路线表"
+  },
+  "musicHint": "轻快旅行 / 80-100 BPM / 清爽不吵",
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "hook",
+      "duration": 4,
+      "headline": "第一次来大理，别急着订海景房",
+      "subtitle": "第一次来大理的情侣和亲子游客先看这条实用建议",
+      "badge": "3秒钩子",
+      "color": "#ffdd2d",
+      "asset": "assets/hero-courtyard.svg",
+      "assetType": "image"
+    },
+    {
+      "id": "pain",
+      "type": "pain",
+      "duration": 4,
+      "headline": "旺季海边吵、停车难、价格还高",
+      "subtitle": "很多人第一次选择时容易踩坑",
+      "badge": "痛点",
+      "color": "#ff7a59",
+      "asset": "assets/hero-courtyard.svg",
+      "assetType": "image"
+    },
+    {
+      "id": "proof",
+      "type": "proof",
+      "duration": 5,
+      "headline": "房间、院子、停车这些细节决定了体验",
+      "subtitle": "更推荐关注：离古城近但晚上安静 · 院子可以喝茶看云 · 停车方便，适合亲子和情侣",
+      "badge": "证据",
+      "color": "#4ade80",
+      "asset": "assets/hero-courtyard.svg",
+      "assetType": "image"
+    },
+    {
+      "id": "offer",
+      "type": "offer",
+      "duration": 4,
+      "headline": "评论区回复“大理”，领取 3 天不踩坑路线表",
+      "subtitle": "我把挑选和避坑要点整理好了",
+      "badge": "价值",
+      "color": "#60a5fa",
+      "asset": "assets/route-map.svg",
+      "assetType": "image"
+    },
+    {
+      "id": "cta",
+      "type": "cta",
+      "duration": 4,
+      "headline": "想要这份入住清单，评论区打“大理”",
+      "subtitle": "大理云上小院｜云南大理",
+      "badge": "转化",
+      "color": "#c084fc",
+      "asset": "assets/hero-courtyard.svg",
+      "assetType": "image"
+    }
+  ],
+  "publishCopy": {
+    "title": "第一次来大理，别急着订海景房",
+    "body": "大理云上小院给第一次来大理的情侣和亲子游客的一条适合收藏的实用建议：旺季海边吵、停车难、价格还高\n更推荐关注：离古城近但晚上安静、院子可以喝茶看云、停车方便，适合亲子和情侣。\n想要这份入住清单，评论区打“大理”",
+    "hashtags": ["#云南旅游", "#大理旅行", "#民宿推荐", "#亲子游", "#旅行攻略"],
+    "commentPrompt": "想要这份入住清单，评论区打“大理”"
+  },
+  "reviewState": "pending",
+  "generationMeta": {
+    "seed": 1,
+    "mode": "local-rules",
+    "provider": "local-rules",
+    "model": "builtin-v2",
+    "promptVersion": "rules-v2",
+    "inputHash": "z4h05g",
+    "industryProfile": "minsu",
+    "repairCount": 0,
+    "needsHumanEvidence": false
+  }
+}
