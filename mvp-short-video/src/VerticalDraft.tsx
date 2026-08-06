@@ -10,8 +10,9 @@ import {
   useVideoConfig,
 } from "remotion";
 import { Video } from "@remotion/media";
-import { type Scene, type SceneMedia, type Timeline } from "./campaign.ts";
+import { type Scene, type SceneMedia, type SubtitleTrack, type Timeline } from "./campaign.ts";
 import { VIDEO_TOKENS, headlineFontSize, sceneColor, subtitleFontSize } from "./contract/tokens.ts";
+import { currentSubtitleAt } from "./app/subtitles.ts";
 import "./style.css";
 
 const sceneTypeLabel: Record<Scene["type"], string> = {
@@ -163,7 +164,7 @@ const SceneCard: React.FC<{
   );
 };
 
-export const VerticalDraft: React.FC<Timeline> = ({ scenes, merchant }) => {
+export const VerticalDraft: React.FC<Timeline> = ({ scenes, merchant, subtitleTrack }) => {
   const { fps } = useVideoConfig();
 
   return (
@@ -185,6 +186,37 @@ export const VerticalDraft: React.FC<Timeline> = ({ scenes, merchant }) => {
           </Sequence>
         );
       })}
+      {subtitleTrack ? <SubtitleOverlay track={subtitleTrack} fps={fps} /> : null}
+    </AbsoluteFill>
+  );
+};
+
+// 字幕烧录：底部安全区内按时间显示当前字幕（双语显示两行），克制不抢画面。
+const SubtitleOverlay: React.FC<{ track: SubtitleTrack; fps: number }> = ({ track, fps }) => {
+  const frame = useCurrentFrame();
+  const seconds = frame / fps;
+  const current = currentSubtitleAt(track, seconds);
+
+  if (!current) {
+    return null;
+  }
+
+  const size = track.size ?? 44;
+  const color = track.color ?? "#ffffff";
+
+  return (
+    <AbsoluteFill className="subtitle-overlay" style={{ pointerEvents: "none" }}>
+      <div
+        className="subtitle-primary"
+        style={{ fontSize: size, color, textShadow: "0 4px 18px rgba(0,0,0,0.85)" }}
+      >
+        {current.primary}
+      </div>
+      {current.translated ? (
+        <div className="subtitle-translated" style={{ fontSize: Math.round(size * 0.72), color }}>
+          {current.translated}
+        </div>
+      ) : null}
     </AbsoluteFill>
   );
 };

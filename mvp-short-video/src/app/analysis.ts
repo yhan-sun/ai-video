@@ -45,6 +45,7 @@ export const applyDraftEdit = (draft: Timeline, edit?: DraftEdit): Timeline => {
     reviewState: edit.reviewState ?? draft.reviewState,
     reviewedAt: edit.reviewedAt,
     updatedAt: edit.updatedAt,
+    subtitleTrack: edit.subtitleTrack ?? draft.subtitleTrack,
     sourceProposal: edit.sourceProposal ?? draft.sourceProposal,
     generationMeta: edit.generationMeta ?? draft.generationMeta,
   };

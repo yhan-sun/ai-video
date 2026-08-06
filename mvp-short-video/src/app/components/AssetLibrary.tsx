@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { assetFileName, assetSource } from "../format.ts";
 import { previewUrlFor } from "../desktop.ts";
-import { buildVoiceOverScript, hydrateAssignments } from "../subtitles.ts";
+import {
+  buildBilingualSrt,
+  buildSrt,
+  buildVoiceOverScript,
+  hydrateAssignments,
+} from "../subtitles.ts";
 import { assetTagOptions, sceneLabel } from "../types.ts";
 import type {
   AssetAuthorization,
@@ -170,6 +175,7 @@ const MediaToolbar = ({
   onApplyTranscript,
   onApplyAssignments,
   onSaveAssignments,
+  onAttachSubtitleTrack,
   onProbeWaveform,
   waveforms,
   onExportText,
@@ -192,6 +198,7 @@ const MediaToolbar = ({
     assignments: Array<{ index: number; sceneId: string | null }>,
   ) => void;
   onSaveAssignments: (asset: AssetItem, assignments: Record<number, string>) => void;
+  onAttachSubtitleTrack: (asset: AssetItem, translated: boolean) => void;
   onProbeWaveform: (asset: AssetItem) => void;
   waveforms: Record<string, number[]>;
   onExportText: (fileName: string, content: string) => void;
@@ -774,6 +781,39 @@ const MediaToolbar = ({
                     >
                       {voiceoverAsset === asset.path ? "收起口播稿" : "生成口播稿"}
                     </button>
+                    <button
+                      type="button"
+                      className="linkButton"
+                      onClick={() => onAttachSubtitleTrack(asset, false)}
+                    >
+                      嵌入字幕轨
+                    </button>
+                    {asset.transcript?.translatedSegments?.length ? (
+                      <button
+                        type="button"
+                        className="linkButton"
+                        onClick={() => onAttachSubtitleTrack(asset, true)}
+                      >
+                        嵌入双语字幕轨
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      className="linkButton"
+                      onClick={() =>
+                        onExportText(
+                          "subtitles-" + asset.fileName.replace(/\.[^.]+$/, "") + ".srt",
+                          asset.transcript?.translatedSegments?.length
+                            ? buildBilingualSrt(
+                                asset.transcript.segments,
+                                asset.transcript.translatedSegments,
+                              )
+                            : buildSrt(asset.transcript?.segments ?? []),
+                        )
+                      }
+                    >
+                      导出 SRT
+                    </button>
                   </div>
                 ) : null}
                 {voiceoverAsset === asset.path && asset.transcript ? (
@@ -868,6 +908,7 @@ export const AssetLibraryPanel = ({
   onApplyTranscript,
   onApplyAssignments,
   onSaveAssignments,
+  onAttachSubtitleTrack,
   onProbeWaveform,
   waveforms,
   onExportText,
@@ -908,6 +949,7 @@ export const AssetLibraryPanel = ({
     assignments: Array<{ index: number; sceneId: string | null }>,
   ) => void;
   onSaveAssignments: (asset: AssetItem, assignments: Record<number, string>) => void;
+  onAttachSubtitleTrack: (asset: AssetItem, translated: boolean) => void;
   onProbeWaveform: (asset: AssetItem) => void;
   waveforms: Record<string, number[]>;
   onExportText: (fileName: string, content: string) => void;
@@ -1082,6 +1124,7 @@ export const AssetLibraryPanel = ({
           onApplyTranscript={onApplyTranscript}
           onApplyAssignments={onApplyAssignments}
           onSaveAssignments={onSaveAssignments}
+          onAttachSubtitleTrack={onAttachSubtitleTrack}
           onProbeWaveform={onProbeWaveform}
           waveforms={waveforms}
           onExportText={onExportText}

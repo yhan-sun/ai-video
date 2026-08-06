@@ -23,6 +23,7 @@ export {
   type ReviewState,
   type Scene,
   type SceneMedia,
+  type SubtitleTrack,
   type MerchantConfig,
   type GenerationRules,
   type AssetMeta,

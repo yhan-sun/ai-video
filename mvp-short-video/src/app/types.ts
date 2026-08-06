@@ -60,6 +60,7 @@ export type DraftEdit = {
   publishCopy?: Partial<Timeline["publishCopy"]>;
   scenes?: Record<string, SceneEdit>;
   sceneOrder?: string[];
+  subtitleTrack?: Timeline["subtitleTrack"];
   locks?: DraftLocks;
   updatedAt?: string;
   reviewState?: ReviewState;

@@ -2,16 +2,25 @@ import { describe, expect, it } from "vitest";
 import {
   assignmentSummary,
   buildAssignedSubtitlePatch,
+  buildBilingualSrt,
+  buildSrt,
   buildSubtitleScenePatch,
   buildVoiceOverScript,
+  currentSubtitleAt,
   hydrateAssignments,
   serializeAssignments,
+  srtTimestamp,
   subtitlesForScenes,
   subtitleWindowLabel,
 } from "../src/app/subtitles.ts";
 import { buildTimeline, sampleAssets, sampleConfig } from "../src/app/timeline.ts";
 import { analyzeDraft, applyDraftEdit, withReviewReset } from "../src/app/analysis.ts";
-import { SubtitleSourceSchema, TranscriptSchema, type Transcript } from "../src/contract/schema.ts";
+import {
+  SubtitleSourceSchema,
+  SubtitleTrackSchema,
+  TranscriptSchema,
+  type Transcript,
+} from "../src/contract/schema.ts";
 
 const transcript: Transcript = {
   language: "zh",
@@ -281,5 +290,57 @@ describe("translated transcript schema", () => {
     expect(parsed.success).toBe(true);
     expect(parsed.success && parsed.data.translatedSegments).toHaveLength(2);
     expect(parsed.success && parsed.data.translatedLanguage).toBe("en");
+  });
+});
+
+describe("srt building and subtitle track", () => {
+  it("formats srt timestamps", () => {
+    expect(srtTimestamp(0)).toBe("00:00:00,000");
+    expect(srtTimestamp(3.5)).toBe("00:00:03,500");
+    expect(srtTimestamp(3661.25)).toBe("01:01:01,250");
+  });
+
+  it("builds single-language srt blocks", () => {
+    const srt = buildSrt(transcript.segments.slice(0, 2));
+    expect(srt).toContain("1\n00:00:00,000 --> 00:00:02,500");
+    expect(srt).toContain("第一次来大理");
+    expect(srt).toContain("2\n");
+  });
+
+  it("builds bilingual srt pairing by index", () => {
+    const translated: Transcript["translatedSegments"] = [
+      { start: 0, end: 2.5, text: "First time in Dali" },
+      { start: 2.5, end: 5, text: "Do not rush" },
+    ];
+    const bilingual = buildBilingualSrt(transcript.segments.slice(0, 2), translated ?? []);
+    expect(bilingual).toContain("第一次来大理\nFirst time in Dali");
+    expect(bilingual).toContain("别只看网红推荐\nDo not rush");
+  });
+
+  it("locates the active subtitle at a given second", () => {
+    const track = {
+      segments: transcript.segments,
+      translatedSegments: [{ start: 0, end: 2.5, text: "First time in Dali" }],
+    };
+    expect(currentSubtitleAt(track, 1)).toEqual({
+      primary: "第一次来大理",
+      translated: "First time in Dali",
+    });
+    expect(currentSubtitleAt(track, 4)?.primary).toBe("别只看网红推荐");
+    expect(currentSubtitleAt(track, 4)?.translated).toBeUndefined();
+    expect(currentSubtitleAt(track, 99)).toBeNull();
+  });
+
+  it("keeps subtitleTrack schema-valid and applies through draft edits", () => {
+    const track = {
+      segments: transcript.segments.slice(0, 2),
+      size: 40,
+      color: "#ffffff",
+    };
+    expect(SubtitleTrackSchema.safeParse(track).success).toBe(true);
+    const draft = buildTimeline(sampleConfig, sampleAssets, 0);
+    const applied = applyDraftEdit(draft, withReviewReset({ subtitleTrack: track }));
+    expect(applied.subtitleTrack?.segments).toHaveLength(2);
+    expect(applied.reviewState).toBe("pending");
   });
 });

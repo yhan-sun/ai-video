@@ -190,6 +190,13 @@ export const ReviewMetaSchema = z.object({
   note: z.string().optional(),
 });
 
+export const SubtitleTrackSchema = z.object({
+  segments: z.array(TranscriptSegmentSchema).min(1),
+  translatedSegments: z.array(TranscriptSegmentSchema).optional(),
+  size: z.number().min(20).max(72).optional(),
+  color: z.string().optional(),
+});
+
 export const TimelineSchema = z.object({
   schemaVersion: z.number().default(SCHEMA_VERSION),
   draftId: z.string().optional(),
@@ -208,6 +215,7 @@ export const TimelineSchema = z.object({
   }),
   musicHint: z.string().optional(),
   scenes: z.array(SceneSchema).min(3).max(8),
+  subtitleTrack: SubtitleTrackSchema.optional(),
   publishCopy: z.object({
     title: z.string(),
     body: z.string(),
@@ -262,6 +270,7 @@ export type AssetAuthorization = z.infer<typeof AssetAuthorizationSchema>;
 export type TranscriptSegment = z.infer<typeof TranscriptSegmentSchema>;
 export type TranscriptAssignment = z.infer<typeof TranscriptAssignmentSchema>;
 export type Transcript = z.infer<typeof TranscriptSchema>;
+export type SubtitleTrack = z.infer<typeof SubtitleTrackSchema>;
 export type SourceClip = z.infer<typeof SourceClipSchema>;
 export type Scene = z.infer<typeof SceneSchema>;
 export type MerchantConfig = z.infer<typeof MerchantConfigSchema>;

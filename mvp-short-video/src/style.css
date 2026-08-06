@@ -155,6 +155,32 @@ p {
   font-weight: 650;
 }
 
+.subtitle-overlay {
+  position: absolute;
+  left: 64px;
+  right: 64px;
+  bottom: 264px; /* 安全区上方，避免与 merchant-card 重叠 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.subtitle-primary {
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  text-wrap: balance;
+}
+
+.subtitle-translated {
+  font-weight: 650;
+  line-height: 1.25;
+  opacity: 0.92;
+  letter-spacing: 0.02em;
+}
+
 .merchant-card {
   position: absolute;
   left: 64px;

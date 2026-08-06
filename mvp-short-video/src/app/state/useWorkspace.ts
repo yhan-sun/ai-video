@@ -786,6 +786,48 @@ export const useWorkspace = () => {
     [updateEdit],
   );
 
+  const attachSubtitleTrack = useCallback(
+    (assetPath: string, translated: boolean) => {
+      const meta = workspace.assetMeta[assetPath];
+      const transcript = meta?.transcript;
+      if (!transcript || transcript.segments.length === 0) {
+        setNotice({ kind: "failed", message: "该素材还没有可用字幕，请先转写。" });
+        return;
+      }
+      if (translated && !transcript.translatedSegments?.length) {
+        setNotice({ kind: "failed", message: "该素材还没有翻译字幕，请先执行“转写并翻译”。" });
+        return;
+      }
+      const track: NonNullable<Timeline["subtitleTrack"]> = {
+        segments: transcript.segments,
+        ...(translated && transcript.translatedSegments
+          ? { translatedSegments: transcript.translatedSegments }
+          : {}),
+      };
+      updateEdit(selectedDraftId, (edit) =>
+        withReviewReset({ ...(edit ?? {}), subtitleTrack: track }),
+      );
+      setNotice({
+        kind: "info",
+        message:
+          "已把素材字幕嵌入当前草稿字幕轨（" +
+          (translated ? "双语" : "原文") +
+          "，共 " +
+          transcript.segments.length +
+          " 段），渲染时自动烧录。",
+      });
+      setActiveView("preview");
+    },
+    [selectedDraftId, setActiveView, setNotice, updateEdit, workspace.assetMeta],
+  );
+
+  const removeSubtitleTrack = useCallback(() => {
+    updateEdit(selectedDraftId, (edit) =>
+      withReviewReset({ ...(edit ?? {}), subtitleTrack: undefined }),
+    );
+    setNotice({ kind: "info", message: "已移除当前草稿的字幕轨。" });
+  }, [selectedDraftId, setNotice, updateEdit]);
+
   const applyMergeToDraft = useCallback(
     (
       draftId: string,
@@ -2630,6 +2672,8 @@ export const useWorkspace = () => {
     applyTranscriptToDraft,
     applyTranscriptAssignments,
     saveTranscriptAssignments,
+    attachSubtitleTrack,
+    removeSubtitleTrack,
     updateSelectedPublish,
     updateSelectedHashtags,
     updateSelectedScene,

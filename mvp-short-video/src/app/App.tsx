@@ -24,9 +24,7 @@ export const App = () => {
   const [copiedCommand, setCopiedCommand] = useState<string | null>(null);
   const [forceExport, setForceExport] = useState(false);
   const [projects, setProjects] = useState<ProjectMeta[]>([]);
-  const [diffIndexA, setDiffIndexA] = useState(0);
-  const [diffIndexB, setDiffIndexB] = useState(1);
-  const [diffIndexC, setDiffIndexC] = useState<number | null>(null);
+  const [diffIndexes, setDiffIndexes] = useState<number[]>([0, 1]);
 
   const refreshProjects = useCallback(() => {
     void workspace.listProjects().then((list) => setProjects(list));
@@ -365,8 +363,7 @@ export const App = () => {
                 }}
                 onApproveAllReady={workspace.approveAllReadyDrafts}
                 onCompare={(index) => {
-                  setDiffIndexA(index);
-                  setDiffIndexB((index + 1) % drafts.length);
+                  setDiffIndexes([index, (index + 1) % drafts.length]);
                   setActiveView("diff");
                 }}
               />
@@ -464,6 +461,9 @@ export const App = () => {
             onSaveAssignments={(asset, assignments) =>
               workspace.saveTranscriptAssignments(asset.path, assignments)
             }
+            onAttachSubtitleTrack={(asset, translated) =>
+              workspace.attachSubtitleTrack(asset.path, translated)
+            }
             onProbeWaveform={(asset) => void workspace.probeWaveform(asset.path)}
             waveforms={workspace.waveforms}
             onExportText={(fileName, content) =>
@@ -545,20 +545,32 @@ export const App = () => {
         return (
           <DraftDiffPanel
             drafts={drafts}
-            indexA={diffIndexA}
-            indexB={diffIndexB}
-            indexC={diffIndexC}
-            onSetA={(index) => setDiffIndexA(Math.min(index, drafts.length - 1))}
-            onSetB={(index) => setDiffIndexB(Math.min(index, drafts.length - 1))}
-            onSetC={(index) =>
-              setDiffIndexC(index === null ? null : Math.min(index, drafts.length - 1))
+            indexes={diffIndexes}
+            onSetIndex={(column, index) =>
+              setDiffIndexes((current) =>
+                current.map((value, currentColumn) =>
+                  currentColumn === column ? Math.min(index, drafts.length - 1) : value,
+                ),
+              )
+            }
+            onAddColumn={() =>
+              setDiffIndexes((current) =>
+                current.length >= drafts.length
+                  ? current
+                  : [...current, (current[current.length - 1] + 1) % drafts.length],
+              )
+            }
+            onRemoveColumn={(column) =>
+              setDiffIndexes((current) =>
+                current.length <= 2 ? current : current.filter((_, index) => index !== column),
+              )
             }
             onGoToDraft={(index) => {
               selectDraft(index);
               setActiveView("preview");
             }}
             onToggleReview={() => {
-              const draft = drafts[diffIndexA];
+              const draft = drafts[diffIndexes[0]];
               if (draft?.draftId) {
                 workspace.toggleReviewForDraft(draft.draftId, draft);
               }

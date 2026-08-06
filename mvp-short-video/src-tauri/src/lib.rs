@@ -295,6 +295,36 @@ async fn save_text_file(
     Ok(selected.to_str().map(String::from))
 }
 
+/// 检测可用的 Chrome 类可执行文件，返回（路径, 是否需要 localhost 放宽）：
+/// 优先用 Remotion 缓存的 headless shell（无 localhost 限制）；否则用系统 Chrome
+/// （需 --allow-insecure-localhost 才能访问本地静态服务器）。
+fn detect_browser_executable() -> (Option<String>, bool) {
+    const SHELL_RELATIVE: &str =
+        "node_modules/.remotion/chrome-headless-shell/mac-arm64/chrome-headless-shell-mac-arm64/chrome-headless-shell";
+    if let Ok(current_dir) = std::env::current_dir() {
+        let shell = current_dir.join(SHELL_RELATIVE);
+        if shell.exists() {
+            return (Some(shell.to_string_lossy().to_string()), false);
+        }
+    }
+
+    const CHROME_CANDIDATES: &[&str] = &[
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        "/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary",
+        "/Applications/Chromium.app/Contents/MacOS/Chromium",
+        "/usr/bin/google-chrome",
+        "/usr/bin/google-chrome-stable",
+        "/usr/bin/chromium",
+        "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+        "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+    ];
+    let chrome = CHROME_CANDIDATES
+        .iter()
+        .find(|candidate| Path::new(candidate).exists())
+        .map(|candidate| candidate.to_string());
+    (chrome.clone(), chrome.is_some())
+}
+
 /// 渲染项目根目录：生产模式优先使用打包进 .app 的 runtime（含裁剪后的 node_modules），
 /// 开发模式回退到当前项目目录。
 async fn render_project_root(app: &AppHandle) -> Result<PathBuf, String> {
@@ -377,6 +407,14 @@ async fn run_render_job(
         .arg(format!("--props={}", props_path.display()))
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped());
+    // 优先使用已有 headless shell / 系统 Chrome，避免生产环境（资源目录只读）下载卡住。
+    let (browser, needs_localhost_flag) = detect_browser_executable();
+    if let Some(browser) = browser {
+        command.arg(format!("--browser-executable={browser}"));
+        if needs_localhost_flag {
+            command.arg("--allow-insecure-localhost");
+        }
+    }
 
     let mut child = command.spawn().map_err(|error| {
         "无法启动渲染进程（需要 Node.js 与项目依赖）：".to_string() + &error.to_string()
@@ -1322,17 +1360,7 @@ async fn media_waveform(app: AppHandle, path: String) -> Result<Option<Vec<u8>>,
     let output = tokio::task::spawn_blocking(move || {
         std::process::Command::new(&ffmpeg)
             .args([
-                "-v",
-                "error",
-                "-i",
-                &path,
-                "-ac",
-                "1",
-                "-ar",
-                "4000",
-                "-f",
-                "s16le",
-                "pipe:1",
+                "-v", "error", "-i", &path, "-ac", "1", "-ar", "4000", "-f", "s16le", "pipe:1",
             ])
             .output()
             .map_err(|error| "ffmpeg 执行失败：".to_string() + &error.to_string())

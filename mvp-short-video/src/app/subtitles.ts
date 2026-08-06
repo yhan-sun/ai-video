@@ -1,7 +1,13 @@
 // 字幕 → 分镜文案：把素材转写结果按分镜时间窗口切分，生成可填入分镜的辅助文案。
 // subtitleSource 中的 segmentStart/segmentEnd 一律表示素材内的绝对时间（秒），
 // 便于审核时对照原始素材核对文案出处。
-import type { Scene, Timeline, Transcript, TranscriptSegment } from "../contract/schema.ts";
+import type {
+  Scene,
+  SubtitleTrack,
+  Timeline,
+  Transcript,
+  TranscriptSegment,
+} from "../contract/schema.ts";
 import { SUBTITLE_MAX } from "./timeline.ts";
 
 export const DEFAULT_MAX_CHARS = SUBTITLE_MAX;
@@ -229,5 +235,68 @@ export const buildVoiceOverScript = (
   return {
     scenes,
     full: scenes.map((scene, index) => `${index + 1}. ${scene.text}`).join("\n\n"),
+  };
+};
+
+export const srtTimestamp = (seconds: number): string => {
+  const totalMs = Math.round(seconds * 1000);
+  const hours = Math.floor(totalMs / 3_600_000);
+  const minutes = Math.floor((totalMs % 3_600_000) / 60_000);
+  const secs = Math.floor((totalMs % 60_000) / 1000);
+  const millis = totalMs % 1000;
+  return (
+    String(hours).padStart(2, "0") +
+    ":" +
+    String(minutes).padStart(2, "0") +
+    ":" +
+    String(secs).padStart(2, "0") +
+    "," +
+    String(millis).padStart(3, "0")
+  );
+};
+
+/** 生成单语 SRT。 */
+export const buildSrt = (segments: TranscriptSegment[]): string =>
+  segments
+    .map(
+      (segment, index) =>
+        `${index + 1}\n${srtTimestamp(segment.start)} --> ${srtTimestamp(segment.end)}\n${segment.text}\n`,
+    )
+    .join("\n");
+
+/** 生成双语 SRT：按索引配对原文与翻译（数量不一致时取较短侧）。 */
+export const buildBilingualSrt = (
+  segments: TranscriptSegment[],
+  translatedSegments: TranscriptSegment[],
+): string => {
+  const count = Math.min(segments.length, translatedSegments.length);
+  const blocks: string[] = [];
+  for (let index = 0; index < count; index += 1) {
+    const primary = segments[index];
+    const translated = translatedSegments[index];
+    blocks.push(
+      `${index + 1}\n${srtTimestamp(primary.start)} --> ${srtTimestamp(primary.end)}\n${primary.text}\n${translated.text}\n`,
+    );
+  }
+  return blocks.join("\n");
+};
+
+export type SubtitleAtTime = {
+  primary?: string;
+  translated?: string;
+};
+
+/** 定位某秒应显示的字幕（双语轨则返回两行）。 */
+export const currentSubtitleAt = (track: SubtitleTrack, seconds: number): SubtitleAtTime | null => {
+  const segment = track.segments.find((item) => seconds >= item.start && seconds < item.end);
+  if (!segment) {
+    return null;
+  }
+  const translated = track.translatedSegments?.find(
+    (item) => seconds >= item.start && seconds < item.end,
+  );
+  return {
+    primary: segment.text,
+    ...(translated ? { translated: translated.text } : {}),
   };
 };

@@ -24,97 +24,21 @@ const DraftOption = ({ draft, index }: { draft: Timeline; index: number }) => (
   </option>
 );
 
-const MergeButton = ({
-  sourceIndex,
-  targetIndex,
-  sceneId,
-  field,
-  disabled,
-  onMerge,
-}: {
-  sourceIndex: number;
-  targetIndex: number;
-  sceneId: string | null;
-  field: DiffMergeField;
-  disabled?: boolean;
-  onMerge: (
-    sourceIndex: number,
-    targetIndex: number,
-    sceneId: string | null,
-    field: DiffMergeField,
-  ) => void;
-}) => (
-  <button
-    type="button"
-    className="linkButton mergeButton"
-    disabled={disabled}
-    onClick={() => onMerge(sourceIndex, targetIndex, sceneId, field)}
-  >
-    B→A
-  </button>
-);
-
-const FieldCell = ({ value, changed }: { value: string; changed: boolean }) => (
-  <span className={changed ? "diffChanged" : undefined}>{value || "—"}</span>
-);
-
-const PublishRow = ({
-  label,
-  a,
-  b,
-  c,
-  field,
-  aChanged,
-  cChanged,
-  indexA,
-  indexB,
-  indexC,
-  onMerge,
-}: {
-  label: string;
-  a: string;
-  b: string;
-  c?: string;
-  field: DiffMergeField;
-  aChanged: boolean;
-  cChanged: boolean;
-  indexA: number;
-  indexB: number;
-  indexC: number | null;
-  onMerge: (
-    sourceIndex: number,
-    targetIndex: number,
-    sceneId: string | null,
-    field: DiffMergeField,
-  ) => void;
-}) => (
-  <div className="diffRow">
-    <span className="diffFieldLabel">{label}</span>
-    <FieldCell value={a} changed={false} />
-    <FieldCell value={b} changed={aChanged} />
-    {indexC !== null ? <FieldCell value={c ?? "—"} changed={cChanged} /> : null}
-    <div className="diffRowActions">
-      <MergeButton
-        sourceIndex={indexB}
-        targetIndex={indexA}
-        sceneId={null}
-        field={field}
-        disabled={!aChanged}
-        onMerge={onMerge}
-      />
-      {indexC !== null ? (
-        <MergeButton
-          sourceIndex={indexC}
-          targetIndex={indexA}
-          sceneId={null}
-          field={field}
-          disabled={!cChanged}
-          onMerge={onMerge}
-        />
-      ) : null}
-    </div>
-  </div>
-);
+const sceneFieldChanged = (candidate: Scene, base: Scene, field: DiffMergeField): boolean => {
+  if (field === "asset") {
+    return normalizeAssetPath(candidate.asset ?? "") !== normalizeAssetPath(base.asset ?? "");
+  }
+  if (field === "headline") {
+    return candidate.headline !== base.headline;
+  }
+  if (field === "subtitle") {
+    return (candidate.subtitle ?? "") !== (base.subtitle ?? "");
+  }
+  if (field === "duration") {
+    return candidate.duration !== base.duration;
+  }
+  return candidate.type !== base.type;
+};
 
 const sceneFieldValue = (scene: Scene, field: DiffMergeField): string => {
   if (field === "asset") {
@@ -134,24 +58,20 @@ const sceneFieldValue = (scene: Scene, field: DiffMergeField): string => {
 
 export const DraftDiffPanel = ({
   drafts,
-  indexA,
-  indexB,
-  indexC,
-  onSetA,
-  onSetB,
-  onSetC,
+  indexes,
+  onSetIndex,
+  onAddColumn,
+  onRemoveColumn,
   onGoToDraft,
   onToggleReview,
   onMerge,
   reviewStates,
 }: {
   drafts: Timeline[];
-  indexA: number;
-  indexB: number;
-  indexC: number | null;
-  onSetA: (index: number) => void;
-  onSetB: (index: number) => void;
-  onSetC: (index: number | null) => void;
+  indexes: number[];
+  onSetIndex: (column: number, index: number) => void;
+  onAddColumn: () => void;
+  onRemoveColumn: (column: number) => void;
   onGoToDraft: (index: number) => void;
   onToggleReview: () => void;
   onMerge: (
@@ -162,92 +82,82 @@ export const DraftDiffPanel = ({
   ) => void;
   reviewStates: Array<"approved" | "pending">;
 }) => {
-  const a = drafts[indexA] ?? drafts[0];
-  const b = drafts[indexB] ?? drafts[1] ?? drafts[0];
-  const c = indexC !== null ? drafts[indexC] : undefined;
+  const columns = indexes.map((draftIndex) => drafts[draftIndex]).filter(Boolean) as Timeline[];
+  const a = drafts[indexes[0]] ?? drafts[0];
+  const b = drafts[indexes[1]] ?? a;
   const diff = useMemo(() => buildDraftDiff(a, b), [a, b]);
-  const cDiff = useMemo(() => (c ? buildDraftDiff(a, c) : null), [a, c]);
-
-  const cSceneMap = useMemo(
-    () => new Map((c?.scenes ?? []).map((scene) => [scene.id, scene])),
-    [c],
-  );
-  const cPublish = cDiff?.publish;
-
-  const publishDiff = diff.publish;
+  const columnCount = columns.length;
+  const colCellStyle = {
+    gridTemplateColumns: "88px repeat(" + columnCount + ", minmax(0, 1fr)) auto",
+  };
 
   return (
     <section className="panel viewPanel diffPanel">
       <div className="sectionHeader">
         <div>
           <p className="eyebrow">差异对比</p>
-          <h2>草稿 A / B{indexC !== null ? " / C" : ""} 审校</h2>
-          <p>
-            逐分镜对比文案、素材与时长，用"B→A"（或"C→A"）把任意字段合并回草稿 A，再决定保留哪条。
-          </p>
+          <h2>草稿 A / B 审校{columnCount > 2 ? "（+" + (columnCount - 2) + "）" : ""}</h2>
+          <p>并列对比任意草稿列，逐字段把任意一列合并回草稿 A（列按钮），再决定保留哪条。</p>
         </div>
-        <StatusBadge tone={diff.identical && !cDiff ? "success" : "warning"}>
-          {diff.identical && !cDiff ? "A / B 完全一致" : diff.changedFieldCount + " 处 A/B 差异"}
+        <StatusBadge tone={diff.identical ? "success" : "warning"}>
+          {diff.identical ? "A / B 完全一致" : diff.changedFieldCount + " 处 A/B 差异"}
         </StatusBadge>
       </div>
 
       <div className="diffSelectors">
-        <label className="diffSelector">
-          <span>草稿 A</span>
-          <select value={indexA} onChange={(event) => onSetA(Number(event.target.value))}>
-            {drafts.map((draft, index) => (
-              <DraftOption key={draft.draftId ?? index} draft={draft} index={index} />
-            ))}
-          </select>
-        </label>
-        <label className="diffSelector">
-          <span>草稿 B</span>
-          <select value={indexB} onChange={(event) => onSetB(Number(event.target.value))}>
-            {drafts.map((draft, index) => (
-              <DraftOption key={draft.draftId ?? index} draft={draft} index={index} />
-            ))}
-          </select>
-        </label>
-        <label className="diffSelector">
-          <span>草稿 C</span>
-          <select
-            value={indexC ?? -1}
-            onChange={(event) => {
-              const value = Number(event.target.value);
-              onSetC(value < 0 ? null : value);
-            }}
-          >
-            <option value={-1}>不对比</option>
-            {drafts.map((draft, index) => (
-              <DraftOption key={draft.draftId ?? index} draft={draft} index={index} />
-            ))}
-          </select>
-        </label>
+        {indexes.map((draftIndex, column) => (
+          <label className="diffSelector" key={column}>
+            <span>
+              {column === 0
+                ? "草稿 A"
+                : column === 1
+                  ? "草稿 B"
+                  : "草稿 " + String.fromCharCode(67 + column - 2)}
+            </span>
+            <select
+              value={draftIndex}
+              onChange={(event) => onSetIndex(column, Number(event.target.value))}
+            >
+              {drafts.map((draft, index) => (
+                <DraftOption key={draft.draftId ?? index} draft={draft} index={index} />
+              ))}
+            </select>
+            {column > 1 ? (
+              <button type="button" className="linkButton" onClick={() => onRemoveColumn(column)}>
+                移除
+              </button>
+            ) : null}
+          </label>
+        ))}
+        <button type="button" className="secondaryButton" onClick={onAddColumn}>
+          + 添加草稿列
+        </button>
         <div className="buttonGroup">
           <button
             type="button"
             className="secondaryButton"
-            onClick={() => onSetB((indexA + 1) % drafts.length)}
+            onClick={() => onSetIndex(1, (indexes[1] + 1) % drafts.length)}
           >
             下一对
           </button>
-          <button type="button" className="secondaryButton" onClick={() => onGoToDraft(indexA)}>
-            编辑草稿 A
-          </button>
-          <button type="button" className="secondaryButton" onClick={() => onGoToDraft(indexB)}>
-            编辑草稿 B
-          </button>
-          {indexC !== null ? (
-            <button type="button" className="secondaryButton" onClick={() => onGoToDraft(indexC)}>
-              编辑草稿 C
+          {columns.map((column, index) => (
+            <button
+              type="button"
+              className="secondaryButton"
+              key={index}
+              onClick={() => onGoToDraft(indexes[index])}
+            >
+              编辑 {index === 0 ? "A" : index === 1 ? "B" : String.fromCharCode(67 + index - 2)}
             </button>
-          ) : null}
+          ))}
           <button
             type="button"
-            className={reviewStates[indexA] === "approved" ? "primaryButton" : "secondaryButton"}
+            className={
+              reviewStates[indexes[0]] === "approved" ? "primaryButton" : "secondaryButton"
+            }
             onClick={onToggleReview}
           >
-            {reviewStates[indexA] === "approved" ? "撤销 A 的审核通过" : "标记 A 审核通过"}
+            {reviewStates[indexes[0]] === "approved" ? "撤销 A 的审核通过" : "标记 A 审核通过"}
           </button>
         </div>
       </div>
@@ -279,11 +189,14 @@ export const DraftDiffPanel = ({
         <article>
           <span>审核状态</span>
           <strong>
-            A {reviewStates[indexA] === "approved" ? "已通过" : "待审核"} · B{" "}
-            {reviewStates[indexB] === "approved" ? "已通过" : "待审核"}
-            {indexC !== null
-              ? " · C " + (reviewStates[indexC] === "approved" ? "已通过" : "待审核")
-              : ""}
+            {columns
+              .map(
+                (column, index) =>
+                  (index === 0 ? "A" : index === 1 ? "B" : String.fromCharCode(67 + index - 2)) +
+                  " " +
+                  (reviewStates[indexes[index]] === "approved" ? "已通过" : "待审核"),
+              )
+              .join(" · ")}
           </strong>
         </article>
       </div>
@@ -294,66 +207,66 @@ export const DraftDiffPanel = ({
             <p className="eyebrow">发布文案</p>
             <h2>标题 / 正文 / CTA / 标签</h2>
           </div>
-          <span className="diffRowHint">B→A / C→A 会把该字段合并进草稿 A</span>
+          <span className="diffRowHint">列按钮会把该字段合并进草稿 A</span>
         </div>
-        <PublishRow
-          label="标题"
-          a={a.publishCopy.title}
-          b={b.publishCopy.title}
-          c={c?.publishCopy.title}
-          field="title"
-          aChanged={publishDiff.titleChanged}
-          cChanged={Boolean(cPublish?.titleChanged)}
-          indexA={indexA}
-          indexB={indexB}
-          indexC={indexC}
-          onMerge={onMerge}
-        />
-        <PublishRow
-          label="正文"
-          a={a.publishCopy.body}
-          b={b.publishCopy.body}
-          c={c?.publishCopy.body}
-          field="body"
-          aChanged={publishDiff.bodyChanged}
-          cChanged={Boolean(cPublish?.bodyChanged)}
-          indexA={indexA}
-          indexB={indexB}
-          indexC={indexC}
-          onMerge={onMerge}
-        />
-        <PublishRow
-          label="CTA"
-          a={a.publishCopy.commentPrompt}
-          b={b.publishCopy.commentPrompt}
-          c={c?.publishCopy.commentPrompt}
-          field="commentPrompt"
-          aChanged={publishDiff.commentPromptChanged}
-          cChanged={Boolean(cPublish?.commentPromptChanged)}
-          indexA={indexA}
-          indexB={indexB}
-          indexC={indexC}
-          onMerge={onMerge}
-        />
-        <PublishRow
-          label="标签"
-          a={a.publishCopy.hashtags.join(" ")}
-          b={b.publishCopy.hashtags.join(" ")}
-          c={c?.publishCopy.hashtags.join(" ")}
-          field="hashtags"
-          aChanged={publishDiff.hashtagsChanged}
-          cChanged={Boolean(cPublish?.hashtagsChanged)}
-          indexA={indexA}
-          indexB={indexB}
-          indexC={indexC}
-          onMerge={onMerge}
-        />
+        {(["title", "body", "commentPrompt", "hashtags"] as const).map((field) => {
+          const aChanged =
+            field === "title"
+              ? diff.publish.titleChanged
+              : field === "body"
+                ? diff.publish.bodyChanged
+                : field === "commentPrompt"
+                  ? diff.publish.commentPromptChanged
+                  : diff.publish.hashtagsChanged;
+          return (
+            <div className="diffRow" style={colCellStyle} key={field}>
+              <span className="diffFieldLabel">
+                {field === "title"
+                  ? "标题"
+                  : field === "body"
+                    ? "正文"
+                    : field === "commentPrompt"
+                      ? "CTA"
+                      : "标签"}
+              </span>
+              {columns.map((column, index) => {
+                const value =
+                  field === "title"
+                    ? column.publishCopy.title
+                    : field === "body"
+                      ? column.publishCopy.body
+                      : field === "commentPrompt"
+                        ? column.publishCopy.commentPrompt
+                        : column.publishCopy.hashtags.join(" ");
+                const changed =
+                  index === 0
+                    ? false
+                    : index === 1
+                      ? aChanged
+                      : column.publishCopy.title !== a.publishCopy.title;
+                return <FieldCell key={index} value={value} changed={changed} />;
+              })}
+              <div className="diffRowActions">
+                {columns.map((_, index) =>
+                  index === 0 ? null : (
+                    <button
+                      type="button"
+                      className="linkButton mergeButton"
+                      key={index}
+                      onClick={() => onMerge(indexes[index], indexes[0], null, field)}
+                    >
+                      {index === 1 ? "B→A" : String.fromCharCode(67 + index - 2) + "→A"}
+                    </button>
+                  ),
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       <div className="diffScenes">
         {diff.sceneDiffs.map((sceneDiff) => {
-          const sceneB = b.scenes.find((scene) => scene.id === sceneDiff.sceneId);
-          const sceneC = cSceneMap.get(sceneDiff.sceneId);
           const changed = sceneDiff.changed;
           const isChanged = changed.length > 0 || sceneDiff.missingInB;
           return (
@@ -373,57 +286,50 @@ export const DraftDiffPanel = ({
                     </StatusBadge>
                   ))}
                   {!isChanged ? <StatusBadge tone="success">A/B 一致</StatusBadge> : null}
-                  {sceneC && sceneC.subtitleSource ? (
-                    <StatusBadge tone="info">C 有字幕来源</StatusBadge>
-                  ) : null}
                 </div>
               </div>
               {(["headline", "subtitle", "duration", "asset"] as const).map((field) => (
-                <div className="diffRow" key={field}>
+                <div className="diffRow" style={colCellStyle} key={field}>
                   <span className="diffFieldLabel">{changedFieldLabel[field]}</span>
-                  <FieldCell
-                    value={sceneFieldValue(
-                      a.scenes.find((s) => s.id === sceneDiff.sceneId)!,
-                      field,
-                    )}
-                    changed={false}
-                  />
-                  <FieldCell
-                    value={sceneB ? sceneFieldValue(sceneB, field) : "—"}
-                    changed={changed.includes(field)}
-                  />
-                  {indexC !== null ? (
-                    <FieldCell
-                      value={sceneC ? sceneFieldValue(sceneC, field) : "—"}
-                      changed={Boolean(
-                        sceneC &&
-                        sceneDiffSceneChanged(
-                          sceneC,
-                          a.scenes.find((s) => s.id === sceneDiff.sceneId)!,
-                          field,
-                        ),
-                      )}
-                    />
-                  ) : null}
-                  <div className="diffRowActions">
-                    <MergeButton
-                      sourceIndex={indexB}
-                      targetIndex={indexA}
-                      sceneId={sceneDiff.sceneId}
-                      field={field}
-                      disabled={!sceneB || !changed.includes(field)}
-                      onMerge={onMerge}
-                    />
-                    {indexC !== null ? (
-                      <MergeButton
-                        sourceIndex={indexC}
-                        targetIndex={indexA}
-                        sceneId={sceneDiff.sceneId}
-                        field={field}
-                        disabled={!sceneC}
-                        onMerge={onMerge}
+                  {columns.map((column, index) => {
+                    const scene = column.scenes.find((item) => item.id === sceneDiff.sceneId);
+                    const changedFlag =
+                      index === 0
+                        ? false
+                        : index === 1
+                          ? changed.includes(field)
+                          : Boolean(
+                              scene &&
+                              sceneFieldChanged(
+                                scene,
+                                a.scenes.find((s) => s.id === sceneDiff.sceneId)!,
+                                field,
+                              ),
+                            );
+                    return (
+                      <FieldCell
+                        key={index}
+                        value={scene ? sceneFieldValue(scene, field) : "—"}
+                        changed={changedFlag}
                       />
-                    ) : null}
+                    );
+                  })}
+                  <div className="diffRowActions">
+                    {columns.map((_, index) =>
+                      index === 0 ? null : (
+                        <button
+                          type="button"
+                          className="linkButton mergeButton"
+                          key={index}
+                          disabled={!columns[index].scenes.some((s) => s.id === sceneDiff.sceneId)}
+                          onClick={() =>
+                            onMerge(indexes[index], indexes[0], sceneDiff.sceneId, field)
+                          }
+                        >
+                          {index === 1 ? "B→A" : String.fromCharCode(67 + index - 2) + "→A"}
+                        </button>
+                      ),
+                    )}
                   </div>
                 </div>
               ))}
@@ -435,20 +341,8 @@ export const DraftDiffPanel = ({
   );
 };
 
-const sceneDiffSceneChanged = (candidate: Scene, base: Scene, field: DiffMergeField): boolean => {
-  if (field === "asset") {
-    return normalizeAssetPath(candidate.asset ?? "") !== normalizeAssetPath(base.asset ?? "");
-  }
-  if (field === "headline") {
-    return candidate.headline !== base.headline;
-  }
-  if (field === "subtitle") {
-    return (candidate.subtitle ?? "") !== (base.subtitle ?? "");
-  }
-  if (field === "duration") {
-    return candidate.duration !== base.duration;
-  }
-  return candidate.type !== base.type;
-};
+const FieldCell = ({ value, changed }: { value: string; changed: boolean }) => (
+  <span className={changed ? "diffChanged" : undefined}>{value || "—"}</span>
+);
 
 export type { SceneEdit };

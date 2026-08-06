@@ -58,6 +58,14 @@ const copyDir = (src, dest) => {
       if (source.includes("node_modules" + path.sep + ".cache")) {
         return false;
       }
+      // 运行时不需要 source map（省 ~23MB）。
+      if (relative.endsWith(".map")) {
+        return false;
+      }
+      // prettier 仅 CLI 代码格式化用到，语言插件非渲染必需（省 ~8MB）。
+      if (source.includes(path.join("node_modules", "prettier", "plugins"))) {
+        return false;
+      }
       return true;
     },
   });
