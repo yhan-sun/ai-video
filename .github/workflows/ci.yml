@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mvp-short-video/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - name: Install dependencies
+        working-directory: mvp-short-video
+        run: npm ci
+      - name: Typecheck
+        working-directory: mvp-short-video
+        run: npm run typecheck
+      - name: Lint
+        working-directory: mvp-short-video
+        run: npm run lint
+      - name: Format check
+        working-directory: mvp-short-video
+        run: npm run format:check
+      - name: Build web app
+        working-directory: mvp-short-video
+        run: npm run build:app
+      - name: Tests
+        working-directory: mvp-short-video
+        run: npm test
+      - name: Tauri rustfmt check
+        working-directory: mvp-short-video
+        run: npm run tauri:fmt:check
+      - name: Tauri backend check
+        working-directory: mvp-short-video
+        run: npm run tauri:check
+      - name: Node generator smoke
+        working-directory: mvp-short-video
+        run: npm run generate && npm run generate:batch
+      - name: Storyboard export
+        working-directory: mvp-short-video
+        run: npm run storyboard
