@@ -1362,38 +1362,76 @@ async fn media_cancel(state: State<'_, MediaState>, job_id: String) -> Result<bo
     }
 }
 
-/// 拼接多个视频为预览合辑（ffmpeg concat demuxer，流复制不重编码）。
+/// 拼接多个视频为预览合辑：可选片头标题卡（drawtext）+ 可选统一重编码压制。
 #[tauri::command]
 async fn media_concat(
     app: AppHandle,
     state: State<'_, MediaState>,
-    job_id: String,
-    paths: Vec<String>,
-    output_name: String,
+    job: MediaConcatJob,
 ) -> Result<String, String> {
     let ffmpeg = detect_binary(&["ffmpeg"]);
     let Some(ffmpeg) = ffmpeg else {
         return Err("未检测到 ffmpeg，请先安装 FFmpeg。".to_string());
     };
-    if paths.len() < 2 {
+    if job.paths.len() < 2 {
         return Err("至少需要两个视频才能生成合辑。".to_string());
     }
 
-    let event = format!("media://{job_id}");
+    let event = format!("media://{}", job.id);
     let work_dir = app_data(&app)?.join("renders");
     tokio::fs::create_dir_all(&work_dir)
         .await
         .map_err(|error| error.to_string())?;
-    let safe_name = safe_file_stem(&output_name);
+    let safe_name = safe_file_stem(&job.output_name);
     let output_path = work_dir.join(format!("{safe_name}.mp4"));
     let list_path = work_dir.join(format!("{safe_name}-concat.txt"));
 
-    let mut list = String::new();
-    for path in &paths {
+    let mut segments: Vec<PathBuf> = Vec::new();
+
+    // 可选片头标题卡：前端 canvas 生成的 PNG（无滤镜依赖），黑底白字 2s。
+    if let Some(png) = job.intro_png.as_deref().filter(|bytes| bytes.len() > 100) {
+        let intro_png_path = work_dir.join(format!("{safe_name}-intro.png"));
+        tokio::fs::write(&intro_png_path, png)
+            .await
+            .map_err(|error| error.to_string())?;
+        let intro_path = work_dir.join(format!("{safe_name}-intro.mp4"));
+        let mut intro_command = tokio::process::Command::new(&ffmpeg);
+        intro_command
+            .arg("-y")
+            .arg("-loop")
+            .arg("1")
+            .arg("-i")
+            .arg(&intro_png_path)
+            .arg("-t")
+            .arg("2")
+            .arg("-r")
+            .arg("30")
+            .arg("-c:v")
+            .arg("libx264")
+            .arg("-preset")
+            .arg("veryfast")
+            .arg("-crf")
+            .arg("22")
+            .arg("-pix_fmt")
+            .arg("yuv420p")
+            .arg(&intro_path);
+        let intro_child = spawn_media_job(&state, &job.id, &mut intro_command).await?;
+        let intro_ok = stream_media_logs(&app, &event, intro_child, &state, &job.id).await?;
+        if intro_ok {
+            segments.push(intro_path);
+        }
+    }
+
+    for path in &job.paths {
         if !tokio::fs::try_exists(path).await.unwrap_or(false) {
             return Err(format!("合辑素材缺失：{path}"));
         }
-        list.push_str(&format!("file '{}'\n", path.replace('\'', "'\\''")));
+        segments.push(PathBuf::from(path));
+    }
+
+    let mut list = String::new();
+    for segment in &segments {
+        list.push_str(&format!("file '{}'\n", segment.to_string_lossy().replace('\'', "'\\''")));
     }
     tokio::fs::write(&list_path, list)
         .await
@@ -1407,12 +1445,25 @@ async fn media_concat(
         .arg("-safe")
         .arg("0")
         .arg("-i")
-        .arg(&list_path)
-        .arg("-c")
-        .arg("copy")
-        .arg(&output_path);
-    let child = spawn_media_job(&state, &job_id, &mut command).await?;
-    let ok = stream_media_logs(&app, &event, child, &state, &job_id).await?;
+        .arg(&list_path);
+    if job.reencode.unwrap_or(true) {
+        // 统一压制：全部转 h264/aac 相同规格（为后续转场/统一码率打基础）。
+        command
+            .arg("-c:v")
+            .arg("libx264")
+            .arg("-preset")
+            .arg("veryfast")
+            .arg("-crf")
+            .arg("20")
+            .arg("-c:a")
+            .arg("aac");
+    } else {
+        command.arg("-c").arg("copy");
+    }
+    command.arg(&output_path);
+
+    let child = spawn_media_job(&state, &job.id, &mut command).await?;
+    let ok = stream_media_logs(&app, &event, child, &state, &job.id).await?;
     if !ok {
         return Err("合辑拼接失败（ffmpeg 退出码非 0）。".to_string());
     }
@@ -1422,6 +1473,16 @@ async fn media_concat(
         serde_json::json!({"type": "done", "output": output_path.to_string_lossy()}),
     );
     Ok(output_path.to_string_lossy().to_string())
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MediaConcatJob {
+    id: String,
+    paths: Vec<String>,
+    output_name: String,
+    intro_png: Option<Vec<u8>>,
+    reencode: Option<bool>,
 }
 
 /// 提取音频波形：ffmpeg 输出 4kHz 单声道 s16le，在 Rust 侧降采样为 160 个峰值桶，

@@ -3825,3 +3825,18 @@ select:focus {
     display: inline-flex;
   }
 }
+
+.reelOptions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reelOptions input[type="text"] {
+  width: 180px;
+}
+
+.reelOptions .checkboxLine {
+  min-height: 0;
+  white-space: nowrap;
+}

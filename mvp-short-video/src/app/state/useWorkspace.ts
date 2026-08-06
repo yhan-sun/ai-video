@@ -53,6 +53,7 @@ import {
 import { generateProposalsWithProvider, proposalToTimeline } from "../llm.ts";
 import {
   assetMetaFromImportedRecord,
+  canvasPngBytes,
   checkAssetExists as desktopCheckAssetExists,
   desktopConvertFileSrc,
   hydrateAssetLocalPaths,
@@ -2171,7 +2172,7 @@ export const useWorkspace = () => {
   );
 
   const buildPreviewReel = useCallback(
-    async (jobIds: string[]) => {
+    async (jobIds: string[], options: { introTitle?: string; reencode?: boolean } = {}) => {
       if (!isDesktop() || jobIds.length < 2) {
         return null;
       }
@@ -2191,14 +2192,26 @@ export const useWorkspace = () => {
       const reelJobId = "reel-" + createId();
       const unlisten = await onMediaEvent(reelJobId, () => undefined);
       try {
+        const introPng = options.introTitle?.trim()
+          ? canvasPngBytes(options.introTitle.trim())
+          : null;
         const output = await mediaConcat({
           id: reelJobId,
           paths,
           outputName: "preview-reel-" + nowLabel().replace(/[:\s]/g, "-"),
+          introPng,
+          reencode: options.reencode,
         });
         setNotice({
           kind: "info",
-          message: "预览合辑已生成（" + paths.length + " 条视频拼接）：" + output,
+          message:
+            "预览合辑已生成（" +
+            paths.length +
+            " 条视频" +
+            (introPng ? "，含片头" : "") +
+            (options.reencode === false ? "，流复制" : "，统一压制") +
+            "）：" +
+            output,
         });
         return output;
       } catch (error) {
@@ -2214,16 +2227,19 @@ export const useWorkspace = () => {
     [setNotice],
   );
 
-  const buildReelFromFinished = useCallback(() => {
-    const done = workspace.renderJobs
-      .filter((job) => job.status === "done" && job.outputPath)
-      .map((job) => job.id);
-    if (done.length < 2) {
-      setNotice({ kind: "info", message: "至少需要 2 条已完成渲染的任务才能生成合辑。" });
-      return;
-    }
-    void buildPreviewReel(done);
-  }, [buildPreviewReel, setNotice, workspace.renderJobs]);
+  const buildReelFromFinished = useCallback(
+    (options: { introTitle?: string; reencode?: boolean } = {}) => {
+      const done = workspace.renderJobs
+        .filter((job) => job.status === "done" && job.outputPath)
+        .map((job) => job.id);
+      if (done.length < 2) {
+        setNotice({ kind: "info", message: "至少需要 2 条已完成渲染的任务才能生成合辑。" });
+        return;
+      }
+      void buildPreviewReel(done, options);
+    },
+    [buildPreviewReel, setNotice, workspace.renderJobs],
+  );
 
   const cancelDesktopRenderJob = useCallback(
     async (jobId?: string) => {
@@ -2310,7 +2326,19 @@ export const useWorkspace = () => {
       const batch = jobs.slice(start, start + batchSize);
       const results = await Promise.all(
         batch.map(async (job) => {
-          const ok = await runDesktopRenderJob(job, { silent: true });
+          let ok = await runDesktopRenderJob(job, { silent: true });
+          if (!ok) {
+            // 失败自动重试一次。
+            setWorkspace((current) => ({
+              ...current,
+              renderJobs: current.renderJobs.map((item) =>
+                item.id === job.id
+                  ? { ...item, log: [...item.log, "渲染失败，自动重试第 1 次…"] }
+                  : item,
+              ),
+            }));
+            ok = await runDesktopRenderJob(job, { silent: true });
+          }
           if (ok) {
             succeeded.push(job.id);
           }

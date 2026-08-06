@@ -90,12 +90,43 @@ export const mediaConcat = async (job: {
   id: string;
   paths: string[];
   outputName: string;
+  introPng?: Uint8Array | null;
+  reencode?: boolean;
 }): Promise<string> => {
-  return invoke("media_concat", {
-    jobId: job.id,
-    paths: job.paths,
-    outputName: job.outputName,
-  });
+  return invoke("media_concat", { job });
+};
+
+// 生成竖屏片头标题卡 PNG（1080x1920 黑底白字，无外部滤镜依赖）。
+export const canvasPngBytes = (title: string): Uint8Array | null => {
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1080;
+    canvas.height = 1920;
+    const context = canvas.getContext("2d");
+    if (!context) {
+      return null;
+    }
+    context.fillStyle = "#101014";
+    context.fillRect(0, 0, 1080, 1920);
+    context.fillStyle = "#f5f5f7";
+    context.font = "600 72px -apple-system, 'PingFang SC', 'Helvetica Neue', sans-serif";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    const lines = title.split("\n").slice(0, 3);
+    lines.forEach((line, index) => {
+      context.fillText(line, 540, 960 + (index - (lines.length - 1) / 2) * 96);
+    });
+    const dataUrl = canvas.toDataURL("image/png");
+    const base64 = dataUrl.split(",")[1] ?? "";
+    const binary = window.atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index);
+    }
+    return bytes;
+  } catch {
+    return null;
+  }
 };
 
 export const onRenderEvent = async (

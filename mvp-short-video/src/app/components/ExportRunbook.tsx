@@ -73,7 +73,7 @@ export const ExportRunbook = ({
   onSetRenderQueueConcurrency: (value: number) => void;
   onPauseRenderQueue: () => void;
   onResumeRenderQueue: () => void;
-  onBuildReel: () => void;
+  onBuildReel: (options: { introTitle?: string; reencode?: boolean }) => void;
   onCancelDesktopRender: () => void;
   onForceDownload: () => void;
   onDownloadCurrent: () => void;
@@ -91,6 +91,8 @@ export const ExportRunbook = ({
 }) => {
   const [storyboardProgress, setStoryboardProgress] = useState<number | null>(null);
   const [storyboardError, setStoryboardError] = useState<string | null>(null);
+  const [reelIntro, setReelIntro] = useState("");
+  const [reelReencode, setReelReencode] = useState(true);
   const draftNumber = String(selectedIndex + 1).padStart(2, "0");
   const currentFile = "timeline-" + draftNumber + ".json";
   const renderCommand = "npm run render";
@@ -389,9 +391,34 @@ export const ExportRunbook = ({
                 <button type="button" className="secondaryButton" onClick={onResumeRenderQueue}>
                   恢复
                 </button>
-                <button type="button" className="secondaryButton" onClick={onBuildReel}>
+                <button
+                  type="button"
+                  className="secondaryButton"
+                  onClick={() =>
+                    onBuildReel({
+                      introTitle: reelIntro.trim() || undefined,
+                      reencode: reelReencode,
+                    })
+                  }
+                >
                   生成预览合辑
                 </button>
+                <div className="reelOptions">
+                  <input
+                    value={reelIntro}
+                    onChange={(event) => setReelIntro(event.target.value)}
+                    placeholder="片头标题（可选）"
+                    aria-label="合辑片头标题"
+                  />
+                  <label className="checkboxLine">
+                    <input
+                      type="checkbox"
+                      checked={reelReencode}
+                      onChange={(event) => setReelReencode(event.target.checked)}
+                    />
+                    <span>统一压制</span>
+                  </label>
+                </div>
               </>
             ) : null}
           </div>
